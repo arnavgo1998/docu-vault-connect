@@ -18,76 +18,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        // First set up the auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            console.log("Auth state changed:", event, session?.user?.id);
-
-            if (session && session.user) {
-              // Get user profile from Supabase
-              const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
-
-              if (error) {
-                console.error("Error fetching profile:", error);
-                setUser(null);
-              } else if (profile) {
-                console.log("Found profile in Supabase:", profile);
-                setUser({
-                  id: profile.id,
-                  name: profile.name || '',
-                  phone: profile.phone || '',
-                  email: profile.email,
-                  age: profile.age
-                });
-              } else {
-                console.log("No profile found for authenticated user");
-                setUser(null);
-              }
-            } else {
-              setUser(null);
-            }
-          }
-        );
-
-        // Then check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session && session.user) {
-          // User is authenticated, get their profile
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
+        // Check if we have a locally stored user
+        const storedUserJson = localStorage.getItem("docuvault_user");
+        if (storedUserJson) {
+          try {
+            const storedUser = JSON.parse(storedUserJson);
+            console.log("Found stored user data:", storedUser);
             
-          if (error) {
-            console.error("Error fetching profile:", error);
-          } else if (profile) {
-            console.log("Found profile in Supabase:", profile);
-            setUser({
-              id: profile.id,
-              name: profile.name || '',
-              phone: profile.phone || '',
-              email: profile.email,
-              age: profile.age
-            });
-          } else {
-            console.log("No profile found in Supabase");
+            // Verify that the user still exists in Supabase
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', storedUser.id)
+              .maybeSingle();
+              
+            if (error) {
+              console.error("Error verifying user:", error);
+              localStorage.removeItem("docuvault_user");
+            } else if (data) {
+              console.log("User verified in database:", data);
+              setUser({
+                id: data.id,
+                name: data.name || '',
+                phone: data.phone || '',
+                email: data.email || undefined,
+                age: data.age || undefined
+              });
+            } else {
+              console.log("User not found in database");
+              localStorage.removeItem("docuvault_user");
+            }
+          } catch (e) {
+            console.error("Error parsing stored user:", e);
+            localStorage.removeItem("docuvault_user");
           }
         }
-
-        setIsLoading(false);
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
         console.error("Auth initialization error:", error);
         toast.error("Failed to initialize authentication");
+      } finally {
         setIsLoading(false);
       }
     };
@@ -126,8 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout
   const logout = async () => {
     try {
-      // Clear Supabase auth session
-      await supabase.auth.signOut();
+      // Clear local storage
+      localStorage.removeItem("docuvault_user");
       setUser(null);
       toast("Logged out", {
         description: "You have been logged out successfully."

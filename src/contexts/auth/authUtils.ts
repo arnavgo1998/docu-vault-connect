@@ -47,7 +47,7 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
     const pendingUserJson = sessionStorage.getItem("docuvault_pending_user");
     
     if (pendingUserJson) {
-      // We're in a registration flow - create a new user
+      // We're in a registration flow - create a new user profile directly
       try {
         const pendingUser = JSON.parse(pendingUserJson);
         console.log("Creating new user from pending data:", pendingUser);
@@ -58,69 +58,34 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           return false;
         }
         
-        // Create a valid email for Supabase authentication
-        // Using a more reliable domain pattern that won't be rejected
-        const randomString = Math.random().toString(36).substring(2, 10);
-        const validEmail = `user_${randomString}@example.org`;
-        const randomPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        
-        // Create user in Supabase Auth
-        console.log("Creating auth user with email:", validEmail);
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: validEmail,
-          password: randomPassword,
-        });
-        
-        if (authError) {
-          console.error("Failed to create auth user:", authError);
-          toast.error("Failed to create user account");
-          return false;
-        }
-        
-        if (!authData.user) {
-          console.error("Auth user created but no user data returned");
-          toast.error("Failed to initialize user account");
-          return false;
-        }
-        
-        console.log("Auth user created:", authData.user);
-        
-        // Create a profile record for the new user
+        // Create profile record directly
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .insert([{
-            id: authData.user.id,
+            id: pendingUser.id,
             name: pendingUser.name,
             phone: pendingUser.phone,
-            email: pendingUser.email || validEmail
+            email: pendingUser.email
           }])
           .select()
           .single();
           
         if (profileError) {
           console.error("Failed to create profile:", profileError);
-          toast.error("User created but profile setup failed");
-          // Continue anyway as the user is created
-        } else {
-          console.log("Profile created successfully:", profile);
+          toast.error("Failed to create user profile. Please try again.");
+          return false;
         }
+        
+        console.log("Profile created successfully:", profile);
         
         // Clean up session storage
         sessionStorage.removeItem("docuvault_pending_user");
         sessionStorage.removeItem("docuvault_pending_phone");
         
+        // Store user data in localStorage for session management
+        localStorage.setItem("docuvault_user", JSON.stringify(profile));
+        
         toast.success("Account created successfully!");
-        
-        // Sign in the new user
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: validEmail,
-          password: randomPassword,
-        });
-        
-        if (signInError) {
-          console.error("Failed to sign in new user:", signInError);
-          // Continue anyway as the account is created
-        }
         
         // Redirect to home page
         window.location.href = "/";
@@ -150,6 +115,9 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         if (profiles && profiles.length > 0) {
           // User found - log them in
           console.log("Found user in Supabase:", profiles[0]);
+          
+          // Store user data in localStorage for session management
+          localStorage.setItem("docuvault_user", JSON.stringify(profiles[0]));
           
           // Clean up session storage
           sessionStorage.removeItem("docuvault_pending_phone");
