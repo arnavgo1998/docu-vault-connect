@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { AuthUser } from "./types";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,10 +20,7 @@ export const sendOtp = async (phone: string): Promise<boolean> => {
     // In a real app, this would use Supabase Auth with a phone provider or a 3rd party SMS service
     
     // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Reduced delay time
-    
-    // Check if user exists
-    const userExists = MOCK_USERS.some((u) => u.phone === phone);
+    await new Promise((resolve) => setTimeout(resolve, 300)); // Reduced delay time further
     
     // In a real app, this would send an actual OTP via SMS
     // For demo purposes, the OTP is always "123456"
@@ -44,8 +40,8 @@ export const sendOtp = async (phone: string): Promise<boolean> => {
 // Verify OTP and handle sign-in or registration
 export const verifyOtp = async (phone: string, otp: string): Promise<boolean> => {
   try {
-    // Mock API call with reduced delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Mock API call with minimal delay
+    await new Promise((resolve) => setTimeout(resolve, 300));
     
     // For demo: only "123456" is valid
     const isValid = otp === "123456";
@@ -123,16 +119,6 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
       localStorage.removeItem("docuvault_pending_user");
       localStorage.removeItem("docuvault_pending_phone");
       
-      // Add to our mock database for future logins
-      const existingUserIndex = MOCK_USERS.findIndex(u => u.phone === pendingUser.phone);
-      if (existingUserIndex >= 0) {
-        // Update existing user
-        MOCK_USERS[existingUserIndex] = pendingUser;
-      } else {
-        // Add new user
-        MOCK_USERS.push(pendingUser);
-      }
-      
       toast.success("Account created successfully!");
       return true;
     } else {
@@ -152,13 +138,23 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         }
       } catch (error) {
         console.error("Failed to fetch user from Supabase:", error);
-        // Fall back to mock users
+        // Fall back to localStorage
       }
       
-      // If not found in Supabase, check mock users
+      // If not found in Supabase, check localStorage
       if (!existingUser) {
-        existingUser = MOCK_USERS.find(u => u.phone === phone);
-        console.log("Found user in mock users:", existingUser);
+        const storedUserJson = localStorage.getItem("docuvault_user");
+        if (storedUserJson) {
+          try {
+            const storedUser = JSON.parse(storedUserJson);
+            if (storedUser.phone === phone) {
+              existingUser = storedUser;
+              console.log("Found user in localStorage:", existingUser);
+            }
+          } catch (error) {
+            console.error("Failed to parse stored user:", error);
+          }
+        }
       }
       
       if (existingUser) {
@@ -201,9 +197,6 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         } catch (error) {
           console.error("Failed to save basic user to Supabase:", error);
         }
-        
-        // Add to mock users
-        MOCK_USERS.push(newUser);
         
         toast.success("Welcome to DocuVault!");
         return true;

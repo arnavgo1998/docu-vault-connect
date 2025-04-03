@@ -18,7 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        // First try to get user from localStorage (for our mock implementation)
+        // First try to get user from localStorage
         const storedUser = localStorage.getItem("docuvault_user");
         
         if (storedUser) {
@@ -28,7 +28,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Verify user exists in Supabase if possible
             try {
-              // Changed to use 'eq' filter instead of 'single' to avoid errors when no matching row is found
               const { data: profiles } = await supabase
                 .from('profiles')
                 .select('*')
@@ -64,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   console.log("Profile created successfully in Supabase");
                 }
                 
-                // Use localStorage data for now
+                // Use localStorage data
                 setUser(parsedUser);
               }
             } catch (error) {
@@ -97,8 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Registering user with data:", userData);
       
-      // In our mock implementation, we just store the user data in localStorage
-      // The actual verification happens in verifyOtp function
+      // Create new user object
       const newUser: AuthUser = {
         id: `user_${Date.now()}`,
         name: userData.name,

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "./AuthContext";
@@ -55,64 +56,6 @@ type InsuranceContextType = {
 // Create the context
 const InsuranceContext = createContext<InsuranceContextType | undefined>(undefined);
 
-// Mock data for demo purposes
-const MOCK_INSURANCE_DOCS: InsuranceDocument[] = [
-  {
-    id: "doc1",
-    ownerId: "1",
-    ownerName: "Test User",
-    name: "Health Insurance",
-    type: "Health",
-    policyNumber: "H-12345678",
-    provider: "BlueCross BlueShield",
-    premium: "$250/month",
-    dueDate: "2025-05-01",
-    uploadDate: "2025-04-01",
-    fileUrl: "/mock-health-insurance.pdf",
-    shared: false,
-  },
-  {
-    id: "doc2",
-    ownerId: "1",
-    ownerName: "Test User",
-    name: "Auto Insurance",
-    type: "Auto",
-    policyNumber: "A-87654321",
-    provider: "Geico",
-    premium: "$125/month",
-    dueDate: "2025-06-15",
-    uploadDate: "2025-04-01",
-    fileUrl: "/mock-auto-insurance.pdf",
-    shared: true,
-  },
-];
-
-const MOCK_SHARED_DOCS: InsuranceDocument[] = [
-  {
-    id: "doc3",
-    ownerId: "2",
-    ownerName: "Jane Smith",
-    name: "Life Insurance",
-    type: "Life",
-    policyNumber: "L-11223344",
-    provider: "MetLife",
-    premium: "$75/month",
-    dueDate: "2025-07-10",
-    uploadDate: "2025-03-15",
-    fileUrl: "/mock-life-insurance.pdf",
-    shared: true,
-  },
-];
-
-const MOCK_SHARED_ACCESS: SharedAccess[] = [
-  {
-    documentId: "doc2",
-    userId: "2",
-    userName: "Jane Smith",
-    accessGrantedDate: "2025-04-01",
-  },
-];
-
 // Provider component
 export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -125,8 +68,6 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Load data when user changes
   useEffect(() => {
     if (user) {
-      // In a real app, this would fetch from an API
-      // For demo, we use mock data
       loadUserData();
     } else {
       // Clear data when user logs out
@@ -137,73 +78,82 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [user]);
 
-  // Load mock data
+  // Load user data
   const loadUserData = () => {
     setIsLoading(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      // Load documents owned by the user
-      if (user) {
-        // Get from localStorage or use mock data if not found
-        const storedDocs = localStorage.getItem("docuvault_my_documents");
-        if (storedDocs) {
-          try {
-            setMyDocuments(JSON.parse(storedDocs));
-          } catch (e) {
-            console.error("Failed to parse stored documents:", e);
-            setMyDocuments(MOCK_INSURANCE_DOCS.filter(doc => doc.ownerId === user.id));
-          }
-        } else {
-          setMyDocuments(MOCK_INSURANCE_DOCS.filter(doc => doc.ownerId === user.id));
+    // Load user's documents and shared documents from localStorage
+    if (user) {
+      // Get documents owned by the user from localStorage
+      const storedDocs = localStorage.getItem("docuvault_my_documents");
+      if (storedDocs) {
+        try {
+          const parsedDocs = JSON.parse(storedDocs);
+          // Filter to only show documents owned by the current user
+          setMyDocuments(parsedDocs.filter((doc: InsuranceDocument) => doc.ownerId === user.id));
+        } catch (e) {
+          console.error("Failed to parse stored documents:", e);
+          setMyDocuments([]);
         }
-        
-        // Get shared documents
-        const storedShared = localStorage.getItem("docuvault_shared_documents");
-        if (storedShared) {
-          try {
-            setSharedWithMe(JSON.parse(storedShared));
-          } catch (e) {
-            console.error("Failed to parse stored shared documents:", e);
-            setSharedWithMe(MOCK_SHARED_DOCS);
-          }
-        } else {
-          setSharedWithMe(MOCK_SHARED_DOCS);
-        }
-        
-        // Get access data
-        const storedAccess = localStorage.getItem("docuvault_shared_access");
-        if (storedAccess) {
-          try {
-            setUsersWithAccess(JSON.parse(storedAccess));
-          } catch (e) {
-            console.error("Failed to parse stored access data:", e);
-            setUsersWithAccess(MOCK_SHARED_ACCESS);
-          }
-        } else {
-          setUsersWithAccess(MOCK_SHARED_ACCESS);
-        }
-        
-        // Get or generate invite code
-        const storedCode = localStorage.getItem("docuvault_invite_code");
-        if (storedCode) {
-          setMyInviteCode(storedCode);
-        } else {
-          // For demo, just generate a random code
-          const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-          localStorage.setItem("docuvault_invite_code", code);
-          setMyInviteCode(code);
-        }
+      } else {
+        setMyDocuments([]);
       }
       
-      setIsLoading(false);
-    }, 1000);
+      // Get shared documents
+      const storedShared = localStorage.getItem("docuvault_shared_documents");
+      if (storedShared) {
+        try {
+          const parsedShared = JSON.parse(storedShared);
+          // Only include documents that are explicitly shared with the current user
+          setSharedWithMe(parsedShared.filter((doc: InsuranceDocument) => 
+            doc.ownerId !== user.id // Not owned by current user
+          ));
+        } catch (e) {
+          console.error("Failed to parse stored shared documents:", e);
+          setSharedWithMe([]);
+        }
+      } else {
+        setSharedWithMe([]);
+      }
+      
+      // Get access data
+      const storedAccess = localStorage.getItem("docuvault_shared_access");
+      if (storedAccess) {
+        try {
+          const parsedAccess = JSON.parse(storedAccess);
+          // Only include access records related to the current user's documents
+          setUsersWithAccess(parsedAccess.filter((access: SharedAccess) => {
+            // Check if the document is owned by the current user
+            const isDocumentOwner = myDocuments.some(doc => 
+              doc.ownerId === user.id && doc.id === access.documentId
+            );
+            return isDocumentOwner;
+          }));
+        } catch (e) {
+          console.error("Failed to parse stored access data:", e);
+          setUsersWithAccess([]);
+        }
+      } else {
+        setUsersWithAccess([]);
+      }
+      
+      // Get or generate invite code
+      const storedCode = localStorage.getItem("docuvault_invite_code");
+      if (storedCode) {
+        setMyInviteCode(storedCode);
+      } else {
+        // Generate a random code
+        const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        localStorage.setItem("docuvault_invite_code", code);
+        setMyInviteCode(code);
+      }
+    }
+    
+    setIsLoading(false);
   };
 
   // Generate a sharing invite code
   const generateInviteCode = async (): Promise<string> => {
-    // In a real app, this would call an API
-    // For demo, we'll just generate a random string
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     localStorage.setItem("docuvault_invite_code", code);
     setMyInviteCode(code);
@@ -216,12 +166,9 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsLoading(true);
       
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // In a real app, this would validate the invite code against the server
-      // For demo, the invite code is valid if it matches any user's code
-      
-      // Check if the invite code is valid (it belongs to someone)
+      // Check if the invite code is valid
       if (inviteCode !== myInviteCode) {
         toast.error("Invalid invite code");
         return false;
@@ -230,8 +177,8 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Grant access
       const newAccess: SharedAccess = {
         documentId,
-        userId: "2", // Mock user ID
-        userName: "Jane Smith", // Mock user name
+        userId: user?.id || "", // Use current user's ID
+        userName: user?.name || "", // Use current user's name
         accessGrantedDate: new Date().toISOString(),
       };
       
@@ -262,9 +209,6 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const revokeAccess = async (userId: string, documentId: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Remove access
       const updatedAccess = usersWithAccess.filter(
@@ -349,9 +293,7 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Extract information from a document using OCR/AI (mock implementation)
   const extractDocumentInfo = async (file: File): Promise<Partial<InsuranceDocument>> => {
     // In a real app, this would send the file to a backend API for OCR/AI processing
-    // For demo, we'll just return mock data based on the file name
-    
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced processing time
     
     const fileName = file.name.toLowerCase();
     
@@ -403,9 +345,6 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setIsLoading(true);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Update document
       const updatedDocs = myDocuments.map(doc => 
         doc.id === id ? { ...doc, ...updates } : doc
@@ -430,9 +369,6 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const deleteDocument = async (id: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Delete document
       const updatedDocs = myDocuments.filter(doc => doc.id !== id);

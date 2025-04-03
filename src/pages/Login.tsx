@@ -60,8 +60,7 @@ const Login: React.FC = () => {
     try {
       const success = await verifyOtp(phone, otp);
       if (success) {
-        console.log("Login successful, redirecting to dashboard");
-        // Redirect immediately instead of using a timeout
+        // Navigate to dashboard immediately
         navigate("/");
       }
     } finally {
