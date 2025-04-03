@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { AuthUser, AuthContextType } from "./auth/types";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from "@supabase/supabase-js";
+import { Session } from "@supabase/supabase-js";
 import { sendOtp, verifyOtp } from "./auth/authUtils";
 
 // Create context
@@ -12,8 +12,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initialize auth state
@@ -22,23 +20,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem("docuvault_user");
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        console.log("Found stored user:", parsedUser);
+        setUser(parsedUser);
       } catch (error) {
         console.error("Failed to parse stored user:", error);
         localStorage.removeItem("docuvault_user");
       }
+    } else {
+      console.log("No stored user found");
     }
     
     setIsLoading(false);
   }, []);
 
   // Register with phone and optional details
-  const register = async (userData: Omit<AuthUser, "id"> & { password?: string }): Promise<boolean> => {
+  const register = async (userData: Omit<AuthUser, "id">): Promise<boolean> => {
     try {
       setIsLoading(true);
       
-      // In a real implementation, this would pre-register the user
-      // For our mock implementation, we just return true to proceed to OTP verification
+      console.log("Registering user with data:", userData);
+      
+      // In our mock implementation, we just store the user data in localStorage
+      // The actual verification happens in verifyOtp function
+      const newUser: AuthUser = {
+        id: `user_${Date.now()}`,
+        name: userData.name,
+        phone: userData.phone,
+        email: userData.email,
+        age: userData.age
+      };
+      
+      // Store user for later (will be used after OTP verification)
+      localStorage.setItem("docuvault_pending_user", JSON.stringify(newUser));
+      
+      console.log("User registration prepared:", newUser);
       toast({
         title: "Verification needed",
         description: "We'll send a verification code to your phone"

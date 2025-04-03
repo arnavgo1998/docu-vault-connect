@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const Login: React.FC = () => {
   const { sendOtp, verifyOtp, isAuthenticated, isLoading } = useAuth();
@@ -29,11 +29,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     
     if (!phone) {
-      toast({
-        title: "Error",
-        description: "Please enter your phone number",
-        variant: "destructive"
-      });
+      toast.error("Please enter your phone number");
       return;
     }
     
@@ -43,10 +39,7 @@ const Login: React.FC = () => {
       const success = await sendOtp(phone);
       if (success) {
         setOtpSent(true);
-        toast({
-          title: "OTP Sent",
-          description: "An OTP has been sent to your phone. Use '123456' for testing."
-        });
+        toast.success("OTP has been sent to your phone. Use '123456' for testing.");
       }
     } finally {
       setIsSubmitting(false);
@@ -57,11 +50,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     
     if (!otp) {
-      toast({
-        title: "Error",
-        description: "Please enter the OTP",
-        variant: "destructive"
-      });
+      toast.error("Please enter the OTP");
       return;
     }
     
@@ -70,7 +59,11 @@ const Login: React.FC = () => {
     try {
       const success = await verifyOtp(phone, otp);
       if (success) {
-        navigate("/");
+        console.log("Login successful, redirecting to dashboard");
+        // Add a slight delay to allow context to update
+        setTimeout(() => {
+          navigate("/");
+        }, 500);
       }
     } finally {
       setIsSubmitting(false);

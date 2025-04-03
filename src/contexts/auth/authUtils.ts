@@ -1,7 +1,6 @@
 import { toast } from "sonner";
 import { AuthUser } from "./types";
 import { MOCK_USERS } from "./mockData";
-import { supabase } from "@/integrations/supabase/client";
 
 // Send OTP (implementation using Supabase)
 export const sendOtp = async (phone: string): Promise<boolean> => {
@@ -44,25 +43,36 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
       return false;
     }
     
-    // Check if user exists in mock data
-    const existingUser = MOCK_USERS.find(u => u.phone === phone);
+    // Get the pending user if we're in a registration flow
+    const pendingUserJson = localStorage.getItem("docuvault_pending_user");
     
-    if (existingUser) {
-      // Existing user - sign in
-      localStorage.setItem("docuvault_user", JSON.stringify(existingUser));
-      toast.success("Welcome back!");
-    } else {
-      // New user - create account
-      const newUser = {
-        id: `user_${Date.now()}`,
-        name: `User ${phone.slice(-4)}`, // Generate a name based on last 4 digits
-        phone: phone,
-      };
+    if (pendingUserJson) {
+      // We're in a registration flow - create a new user
+      const pendingUser = JSON.parse(pendingUserJson);
+      console.log("Creating new user from pending data:", pendingUser);
       
-      // Store the new user
-      MOCK_USERS.push(newUser);
-      localStorage.setItem("docuvault_user", JSON.stringify(newUser));
+      // Save the new user
+      localStorage.setItem("docuvault_user", pendingUserJson);
+      localStorage.removeItem("docuvault_pending_user");
+      
+      // Add to our mock database for future logins
+      MOCK_USERS.push(pendingUser);
+      
       toast.success("Account created successfully!");
+    } else {
+      // We're in a login flow - find the existing user
+      const existingUser = MOCK_USERS.find(u => u.phone === phone);
+      
+      if (existingUser) {
+        // Existing user - sign in
+        console.log("Logging in existing user:", existingUser);
+        localStorage.setItem("docuvault_user", JSON.stringify(existingUser));
+        toast.success("Welcome back!");
+      } else {
+        // No such user
+        toast.error("User not found. Please register first.");
+        return false;
+      }
     }
     
     return true;
