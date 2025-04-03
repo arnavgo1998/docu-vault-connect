@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { AuthUser, AuthContextType } from "./auth/types";
 import { sendOtp, verifyOtp } from "./auth/authUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,22 +15,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state
   useEffect(() => {
-    // Check for logged in user in local storage (for our mock implementation)
-    const storedUser = localStorage.getItem("docuvault_user");
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        console.log("Found stored user:", parsedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error("Failed to parse stored user:", error);
-        localStorage.removeItem("docuvault_user");
+    const initAuth = async () => {
+      setIsLoading(true);
+      // First try to get user from localStorage (for our mock implementation)
+      const storedUser = localStorage.getItem("docuvault_user");
+      
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("Found stored user:", parsedUser);
+          
+          // Verify user exists in Supabase if possible
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('phone', parsedUser.phone)
+              .single();
+              
+            if (data) {
+              // Use Supabase data if available
+              setUser({
+                id: data.id,
+                name: data.name || parsedUser.name,
+                phone: data.phone,
+                email: data.email,
+                age: data.age
+              });
+            } else {
+              // Fall back to localStorage data
+              setUser(parsedUser);
+            }
+          } catch (error) {
+            // If Supabase query fails, use localStorage data
+            console.error("Failed to verify user in Supabase:", error);
+            setUser(parsedUser);
+          }
+        } catch (error) {
+          console.error("Failed to parse stored user:", error);
+          localStorage.removeItem("docuvault_user");
+        }
+      } else {
+        console.log("No stored user found");
       }
-    } else {
-      console.log("No stored user found");
-    }
+      
+      setIsLoading(false);
+    };
     
-    setIsLoading(false);
+    initAuth();
   }, []);
 
   // Register with phone and optional details

@@ -1,9 +1,20 @@
 
 import { toast } from "sonner";
 import { AuthUser } from "./types";
-import { MOCK_USERS } from "./mockData";
+import { supabase } from "@/integrations/supabase/client";
 
-// Send OTP (implementation using Supabase)
+// Array to store mock users for the demo when not using Supabase
+export const MOCK_USERS: AuthUser[] = [
+  {
+    id: "1",
+    name: "Test User",
+    phone: "1234567890",
+    email: "test@example.com",
+    age: 30,
+  },
+];
+
+// Send OTP (implementation using mock system)
 export const sendOtp = async (phone: string): Promise<boolean> => {
   try {
     // For demo purposes, we'll use a mock implementation
@@ -58,8 +69,47 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         return false;
       }
       
-      // Save the new user
+      // Save the new user to localStorage (for our mock auth system)
       localStorage.setItem("docuvault_user", JSON.stringify(pendingUser));
+      
+      // Try to save to Supabase if available
+      try {
+        // Check if user already exists in Supabase by phone
+        const { data: existingProfiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('phone', pendingUser.phone);
+          
+        if (existingProfiles && existingProfiles.length > 0) {
+          // Update existing profile
+          await supabase
+            .from('profiles')
+            .update({
+              name: pendingUser.name,
+              email: pendingUser.email,
+              age: pendingUser.age
+            })
+            .eq('phone', pendingUser.phone);
+        } else {
+          // Create new profile
+          await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: pendingUser.id,
+                name: pendingUser.name,
+                phone: pendingUser.phone,
+                email: pendingUser.email,
+                age: pendingUser.age
+              }
+            ]);
+        }
+      } catch (error) {
+        console.error("Failed to save user to Supabase:", error);
+        // Continue with local storage approach as fallback
+      }
+      
+      // Clean up
       localStorage.removeItem("docuvault_pending_user");
       localStorage.removeItem("docuvault_pending_phone");
       
@@ -77,7 +127,27 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
       return true;
     } else {
       // We're in a login flow - find the existing user
-      const existingUser = MOCK_USERS.find(u => u.phone === phone);
+      let existingUser = null;
+      
+      // Try to find user in Supabase first
+      try {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('phone', phone);
+          
+        if (profiles && profiles.length > 0) {
+          existingUser = profiles[0];
+        }
+      } catch (error) {
+        console.error("Failed to fetch user from Supabase:", error);
+        // Fall back to mock users
+      }
+      
+      // If not found in Supabase, check mock users
+      if (!existingUser) {
+        existingUser = MOCK_USERS.find(u => u.phone === phone);
+      }
       
       if (existingUser) {
         // Existing user - sign in
