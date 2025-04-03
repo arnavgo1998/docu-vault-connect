@@ -68,6 +68,10 @@ const Login: React.FC = () => {
     }
   };
   
+  const handleRegisterRedirect = () => {
+    navigate("/register");
+  };
+  
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -159,14 +163,14 @@ const Login: React.FC = () => {
             <Button
               variant="link"
               className="p-0 h-auto text-docuvault-primary"
-              onClick={() => navigate("/register")}
+              onClick={handleRegisterRedirect}
             >
               Sign up
             </Button>
           </p>
           
           <div className="text-xs text-gray-400 text-center mt-4">
-            For testing purposes, use any phone number with OTP "123456"
+            You must register before logging in
           </div>
         </CardFooter>
       </Card>

@@ -165,41 +165,9 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         toast.success("Welcome back!");
         return true;
       } else {
-        // No such user - if we have a phone number, let's create a basic user
-        console.log("User not found, creating basic user");
-        
-        const newUser: AuthUser = {
-          id: `user_${Date.now()}`,
-          name: `User ${phone.slice(-4)}`, // Generate a basic name from the phone number
-          phone: phone,
-          email: undefined,
-          age: undefined
-        };
-        
-        // Save to localStorage
-        localStorage.setItem("docuvault_user", JSON.stringify(newUser));
-        
-        // Try to save to Supabase
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .insert([{
-              id: newUser.id,
-              name: newUser.name,
-              phone: newUser.phone,
-            }]);
-            
-          if (error) {
-            console.error("Failed to create profile in Supabase:", error);
-          } else {
-            console.log("Basic profile created in Supabase");
-          }
-        } catch (error) {
-          console.error("Failed to save basic user to Supabase:", error);
-        }
-        
-        toast.success("Welcome to DocuVault!");
-        return true;
+        // No existing user - inform the user they need to register first
+        toast.error("Account not found. Please register first.");
+        return false;
       }
     }
   } catch (error) {
