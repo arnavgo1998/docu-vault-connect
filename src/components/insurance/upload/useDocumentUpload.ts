@@ -130,9 +130,10 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
       // Use the Supabase client directly to store document metadata
       console.log("Uploading document metadata with file URL:", fileUrl);
       
+      // FIX: Use the type to derive the document name instead of trying to access a non-existent name property
       const documentData = {
         owner_id: user.id,
-        name: docInfo.name || `${docInfo.type} Insurance`,
+        name: `${docInfo.type} Insurance`,  // Create a name based on the type
         type: docInfo.type || "General",
         provider: docInfo.provider || "Unknown Provider",
         policy_number: docInfo.policyNumber || '',

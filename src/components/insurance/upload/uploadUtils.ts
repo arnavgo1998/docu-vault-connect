@@ -75,8 +75,12 @@ export const uploadFileToStorage = async (file: File, userId: string) => {
       return { fileUrl: null, error: error.message };
     }
     
-    // Get the public URL
-    const fileUrl = `${supabase.storageUrl}/object/public/documents/${filePath}`;
+    // Get the public URL - FIX: Use getPublicUrl method instead of accessing storageUrl directly
+    const { data: publicUrlData } = supabase.storage
+      .from('documents')
+      .getPublicUrl(filePath);
+      
+    const fileUrl = publicUrlData.publicUrl;
     return { fileUrl, error: null };
   } catch (error) {
     console.error("Error uploading file:", error);
