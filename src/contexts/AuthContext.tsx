@@ -18,31 +18,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        // Get user profile from Supabase if authenticated
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .maybeSingle();
-          
-        if (error) {
-          console.error("Error fetching profile:", error);
-        } else if (profiles) {
-          console.log("Found profile in Supabase:", profiles);
-          setUser({
-            id: profiles.id,
-            name: profiles.name || '',
-            phone: profiles.phone || '',
-            email: profiles.email,
-            age: profiles.age
-          });
-        } else {
-          console.log("No profile found in Supabase");
-          setUser(null);
+        // First set up the auth state listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log("Auth state changed:", event, session?.user?.id);
+
+            if (session && session.user) {
+              // Get user profile from Supabase
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              if (error) {
+                console.error("Error fetching profile:", error);
+                setUser(null);
+              } else if (profile) {
+                console.log("Found profile in Supabase:", profile);
+                setUser({
+                  id: profile.id,
+                  name: profile.name || '',
+                  phone: profile.phone || '',
+                  email: profile.email,
+                  age: profile.age
+                });
+              } else {
+                console.log("No profile found for authenticated user");
+                setUser(null);
+              }
+            } else {
+              setUser(null);
+            }
+          }
+        );
+
+        // Then check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session && session.user) {
+          // User is authenticated, get their profile
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          if (error) {
+            console.error("Error fetching profile:", error);
+          } else if (profile) {
+            console.log("Found profile in Supabase:", profile);
+            setUser({
+              id: profile.id,
+              name: profile.name || '',
+              phone: profile.phone || '',
+              email: profile.email,
+              age: profile.age
+            });
+          } else {
+            console.log("No profile found in Supabase");
+          }
         }
+
+        setIsLoading(false);
+        
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error("Auth initialization error:", error);
         toast.error("Failed to initialize authentication");
-      } finally {
         setIsLoading(false);
       }
     };

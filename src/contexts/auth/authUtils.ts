@@ -58,23 +58,17 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           return false;
         }
         
-        // First create a Supabase auth user with a randomly generated email
-        // This is a workaround since we're not using real authentication
-        // In a real app, you would use Supabase Auth properly
-        const randomEmail = `user_${Math.random().toString(36).substring(2, 15)}@example.com`;
-        const randomPassword = Math.random().toString(36).substring(2, 15);
+        // Create a valid email for Supabase authentication
+        // Using a more reliable domain pattern that won't be rejected
+        const randomString = Math.random().toString(36).substring(2, 10);
+        const validEmail = `user_${randomString}@example.org`;
+        const randomPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         
         // Create user in Supabase Auth
-        console.log("Creating auth user with email:", randomEmail);
+        console.log("Creating auth user with email:", validEmail);
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: randomEmail,
+          email: validEmail,
           password: randomPassword,
-          options: {
-            data: {
-              name: pendingUser.name,
-              phone: pendingUser.phone
-            }
-          }
         });
         
         if (authError) {
@@ -91,27 +85,24 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         
         console.log("Auth user created:", authData.user);
         
-        // In a real app with proper triggers, the profile would be created automatically
-        // But we'll update it here just to be sure
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for Supabase trigger to run
-        
+        // Create a profile record for the new user
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .update({
+          .insert([{
+            id: authData.user.id,
             name: pendingUser.name,
             phone: pendingUser.phone,
-            email: pendingUser.email || randomEmail,
-            age: pendingUser.age
-          })
-          .eq('id', authData.user.id)
+            email: pendingUser.email || validEmail
+          }])
           .select()
           .single();
           
         if (profileError) {
-          console.warn("Failed to update profile, but auth user was created:", profileError);
-          // Don't return false here - user is still created, profile will be fixed on next login
+          console.error("Failed to create profile:", profileError);
+          toast.error("User created but profile setup failed");
+          // Continue anyway as the user is created
         } else {
-          console.log("Profile updated successfully:", profile);
+          console.log("Profile created successfully:", profile);
         }
         
         // Clean up session storage
@@ -119,6 +110,17 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         sessionStorage.removeItem("docuvault_pending_phone");
         
         toast.success("Account created successfully!");
+        
+        // Sign in the new user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: validEmail,
+          password: randomPassword,
+        });
+        
+        if (signInError) {
+          console.error("Failed to sign in new user:", signInError);
+          // Continue anyway as the account is created
+        }
         
         // Redirect to home page
         window.location.href = "/";
