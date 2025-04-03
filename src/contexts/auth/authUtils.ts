@@ -58,64 +58,26 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           return false;
         }
         
-        // Try to create or update profile in Supabase
-        const { data: existingProfiles, error: fetchError } = await supabase
+        // Try to create user profile in Supabase directly
+        // Note: With the new RLS policy, anyone can insert into profiles
+        const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
-          .select('*')
-          .eq('phone', pendingUser.phone);
-          
-        console.log("Checked for existing profile:", existingProfiles);
-        
-        if (fetchError) {
-          console.error("Error checking for existing profile:", fetchError);
-          toast.error("Failed to check for existing user");
+          .insert([{
+            id: pendingUser.id,
+            name: pendingUser.name,
+            phone: pendingUser.phone,
+            email: pendingUser.email,
+            age: pendingUser.age
+          }])
+          .select()
+          .single();
+            
+        if (insertError) {
+          console.error("Failed to create profile in Supabase:", insertError);
+          toast.error("Failed to create user profile");
           return false;
-        }
-          
-        let userId = pendingUser.id;
-        
-        if (existingProfiles && existingProfiles.length > 0) {
-          // Update existing profile
-          console.log("Existing profile found, updating:", existingProfiles[0]);
-          userId = existingProfiles[0].id;
-          
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              name: pendingUser.name,
-              email: pendingUser.email,
-              age: pendingUser.age
-            })
-            .eq('id', userId);
-            
-          if (updateError) {
-            console.error("Failed to update profile in Supabase:", updateError);
-            toast.error("Failed to update user profile");
-            return false;
-          } else {
-            console.log("Profile updated successfully in Supabase");
-          }
         } else {
-          // Create new profile with proper UUID
-          console.log("No existing profile found, creating new profile with ID:", userId);
-          
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: userId,
-              name: pendingUser.name,
-              phone: pendingUser.phone,
-              email: pendingUser.email,
-              age: pendingUser.age
-            }]);
-            
-          if (insertError) {
-            console.error("Failed to create profile in Supabase:", insertError);
-            toast.error("Failed to create user profile");
-            return false;
-          } else {
-            console.log("Profile created successfully in Supabase");
-          }
+          console.log("Profile created successfully in Supabase:", newProfile);
         }
         
         // Clean up session storage
@@ -124,7 +86,7 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         
         toast.success("Account created successfully!");
         
-        // Refresh the page to initialize auth
+        // Redirect to home page
         window.location.href = "/";
         return true;
       } catch (error) {
@@ -158,7 +120,7 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           
           toast.success("Welcome back!");
           
-          // Refresh the page to initialize auth
+          // Redirect to home page
           window.location.href = "/";
           return true;
         } else {
