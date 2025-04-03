@@ -1,89 +1,88 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from "uuid";
 
-export const validateFile = (file: File): { valid: boolean; error?: string } => {
-  // Validate file type
-  const validTypes = ['.pdf', '.jpg', '.jpeg', '.png'];
-  const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
-  if (!validTypes.includes(fileExtension)) {
-    return {
-      valid: false,
-      error: "Please upload a PDF, JPG, or PNG file"
-    };
-  }
-  
-  // Validate file size (max 10MB)
-  const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+// Validates the file before upload
+export const validateFile = (file: File) => {
+  // Check file size (10MB max)
+  const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: "Maximum file size is 10MB"
+      error: `File size exceeds the 10MB limit. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`
     };
   }
   
-  return { valid: true };
+  // Check file type
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/heic',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      valid: false,
+      error: `File type ${file.type} is not supported. Please upload a PDF, JPG, PNG, HEIC, or Word document.`
+    };
+  }
+  
+  return { valid: true, error: null };
 };
 
-export const uploadFileToStorage = async (file: File, userId: string): Promise<{ fileUrl: string; error?: string }> => {
+// Uploads the file to Supabase storage
+export const uploadFileToStorage = async (file: File, userId: string) => {
   try {
-    if (!userId) {
-      console.error("Missing user ID for file upload");
-      return { fileUrl: "", error: "Authentication required. Please log in." };
-    }
-
-    // Create a safe filename to avoid special characters issues
+    // Create a unique filename with the original extension
     const fileExt = file.name.split('.').pop();
-    // Make sure userId is the first part of the path to comply with RLS policies
-    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const fileName = `${Date.now()}-${uuidv4().substring(0, 8)}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
     
-    // Log the user ID and file path to help with debugging
     console.log("Uploading with userID:", userId);
-    console.log("File path:", fileName);
+    console.log("File path:", filePath);
     
-    // Check if storage bucket exists
+    // Check if the bucket exists
     const { data: buckets } = await supabase.storage.listBuckets();
-    if (!buckets?.some(bucket => bucket.name === 'documents')) {
+    const bucketExists = buckets?.some(bucket => bucket.name === 'documents');
+    
+    // Create the bucket if it doesn't exist
+    if (!bucketExists) {
       console.log("Documents bucket not found, creating one...");
       try {
-        const { error: bucketError } = await supabase.storage.createBucket('documents', {
-          public: true
+        await supabase.storage.createBucket('documents', {
+          public: true,
+          fileSizeLimit: 10485760, // 10MB in bytes
         });
-        
-        if (bucketError) {
-          console.error("Error creating bucket:", bucketError);
-        }
       } catch (err) {
-        console.error("Could not create bucket:", err);
-        // Continue anyway as bucket might exist
+        console.error("Error creating bucket:", err);
+        // Continue even if bucket creation fails (it might already exist)
       }
     }
     
     // Upload the file
-    const { data: fileData, error: uploadError } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from('documents')
-      .upload(fileName, file, {
+      .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false,
+        upsert: true
       });
-
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
-      throw new Error(`Storage error: ${uploadError.message}`);
+      
+    if (error) {
+      console.error("Error uploading file:", error);
+      return { fileUrl: null, error: error.message };
     }
     
     // Get the public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('documents')
-      .getPublicUrl(fileName);
-    
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-      throw new Error("Failed to get public URL for uploaded file");
-    }
-    
-    return { fileUrl: publicUrlData.publicUrl };
+    const fileUrl = `${supabase.storageUrl}/object/public/documents/${filePath}`;
+    return { fileUrl, error: null };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "There was a problem uploading your document.";
-    console.error("File upload failed:", errorMessage);
-    return { fileUrl: "", error: errorMessage };
+    console.error("Error uploading file:", error);
+    return { 
+      fileUrl: null, 
+      error: error instanceof Error ? error.message : "Unknown error during file upload" 
+    };
   }
 };

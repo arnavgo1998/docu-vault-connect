@@ -4,9 +4,9 @@ import { useInsurance } from "@/contexts/InsuranceContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { validateFile, uploadFileToStorage } from "./uploadUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useDocumentUpload = (onSuccess?: () => void) => {
-  const { uploadDocument, extractDocumentInfo } = useInsurance();
   const { user } = useAuth();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
@@ -14,6 +14,55 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
   const [progress, setProgress] = useState(0);
   const [processingInfo, setProcessingInfo] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  
+  const extractDocumentInfo = async (file: File) => {
+    // In a real app, this would send the file to a backend API for OCR/AI processing
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.includes("health")) {
+      return {
+        type: "Health",
+        policyNumber: "H-" + Math.random().toString().substring(2, 10),
+        provider: "BlueCross BlueShield",
+        premium: "$250/month",
+        dueDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      };
+    } else if (fileName.includes("auto")) {
+      return {
+        type: "Auto",
+        policyNumber: "A-" + Math.random().toString().substring(2, 10),
+        provider: "Geico",
+        premium: "$125/month",
+        dueDate: new Date(Date.now() + 45*24*60*60*1000).toISOString().split('T')[0],
+      };
+    } else if (fileName.includes("life")) {
+      return {
+        type: "Life",
+        policyNumber: "L-" + Math.random().toString().substring(2, 10),
+        provider: "MetLife",
+        premium: "$75/month",
+        dueDate: new Date(Date.now() + 60*24*60*60*1000).toISOString().split('T')[0],
+      };
+    } else if (fileName.includes("home")) {
+      return {
+        type: "Home",
+        policyNumber: "H-" + Math.random().toString().substring(2, 10),
+        provider: "State Farm",
+        premium: "$150/month",
+        dueDate: new Date(Date.now() + 90*24*60*60*1000).toISOString().split('T')[0],
+      };
+    } else {
+      return {
+        type: "General",
+        policyNumber: "G-" + Math.random().toString().substring(2, 10),
+        provider: "Unknown Provider",
+        premium: "Unknown",
+        dueDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      };
+    }
+  };
   
   const handleFileChange = (newFile: File | null) => {
     setFile(newFile);
@@ -78,32 +127,45 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
       
       setProgress(90);
       
-      // Use the uploadDocument function to store document metadata
+      // Use the Supabase client directly to store document metadata
       console.log("Uploading document metadata with file URL:", fileUrl);
-      const docData = {
-        fileUrl: fileUrl,
-        fileType: file.type,
-        fileSize: file.size,
-        name: docInfo.name || file.name,
-        ...docInfo
+      
+      const documentData = {
+        owner_id: user.id,
+        name: docInfo.name || `${docInfo.type} Insurance`,
+        type: docInfo.type || "General",
+        provider: docInfo.provider || "Unknown Provider",
+        policy_number: docInfo.policyNumber || '',
+        premium_amount: docInfo.premium || '',
+        end_date: docInfo.dueDate || '',
+        file_url: fileUrl,
+        file_type: file.type,
+        file_size: file.size,
+        upload_date: new Date().toISOString(),
+        shared: false
       };
       
-      const success = await uploadDocument(file, docData);
+      const { data, error: insertError } = await supabase
+        .from('documents')
+        .insert(documentData)
+        .select()
+        .single();
       
-      if (success) {
-        setProgress(100);
-        toast({
-          title: "Upload successful",
-          description: "Your document has been uploaded."
-        });
-        
-        if (onSuccess) {
-          setTimeout(() => {
-            onSuccess();
-          }, 500);
-        }
-      } else {
+      if (insertError) {
+        console.error("Error inserting document metadata:", insertError);
         throw new Error("Failed to record document metadata");
+      }
+      
+      setProgress(100);
+      toast({
+        title: "Upload successful",
+        description: "Your document has been uploaded."
+      });
+      
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess();
+        }, 500);
       }
     } catch (error) {
       console.error("Upload failed:", error);
