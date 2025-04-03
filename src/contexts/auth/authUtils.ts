@@ -21,7 +21,7 @@ export const sendOtp = async (phone: string): Promise<boolean> => {
     // In a real app, this would use Supabase Auth with a phone provider or a 3rd party SMS service
     
     // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Reduced delay time
     
     // Check if user exists
     const userExists = MOCK_USERS.some((u) => u.phone === phone);
@@ -44,8 +44,8 @@ export const sendOtp = async (phone: string): Promise<boolean> => {
 // Verify OTP and handle sign-in or registration
 export const verifyOtp = async (phone: string, otp: string): Promise<boolean> => {
   try {
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Mock API call with reduced delay
+    await new Promise((resolve) => setTimeout(resolve, 500));
     
     // For demo: only "123456" is valid
     const isValid = otp === "123456";
@@ -82,7 +82,7 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           
         if (existingProfiles && existingProfiles.length > 0) {
           // Update existing profile
-          await supabase
+          const { error } = await supabase
             .from('profiles')
             .update({
               name: pendingUser.name,
@@ -90,19 +90,29 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
               age: pendingUser.age
             })
             .eq('phone', pendingUser.phone);
+            
+          if (error) {
+            console.error("Failed to update profile in Supabase:", error);
+          } else {
+            console.log("Profile updated successfully in Supabase");
+          }
         } else {
           // Create new profile
-          await supabase
+          const { error } = await supabase
             .from('profiles')
-            .insert([
-              {
-                id: pendingUser.id,
-                name: pendingUser.name,
-                phone: pendingUser.phone,
-                email: pendingUser.email,
-                age: pendingUser.age
-              }
-            ]);
+            .insert([{
+              id: pendingUser.id,
+              name: pendingUser.name,
+              phone: pendingUser.phone,
+              email: pendingUser.email,
+              age: pendingUser.age
+            }]);
+            
+          if (error) {
+            console.error("Failed to create profile in Supabase:", error);
+          } else {
+            console.log("Profile created successfully in Supabase");
+          }
         }
       } catch (error) {
         console.error("Failed to save user to Supabase:", error);
@@ -138,6 +148,7 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           
         if (profiles && profiles.length > 0) {
           existingUser = profiles[0];
+          console.log("Found user in Supabase:", existingUser);
         }
       } catch (error) {
         console.error("Failed to fetch user from Supabase:", error);
@@ -147,6 +158,7 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
       // If not found in Supabase, check mock users
       if (!existingUser) {
         existingUser = MOCK_USERS.find(u => u.phone === phone);
+        console.log("Found user in mock users:", existingUser);
       }
       
       if (existingUser) {
@@ -157,9 +169,44 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         toast.success("Welcome back!");
         return true;
       } else {
-        // No such user
-        toast.error("User not found. Please register first.");
-        return false;
+        // No such user - if we have a phone number, let's create a basic user
+        console.log("User not found, creating basic user");
+        
+        const newUser: AuthUser = {
+          id: `user_${Date.now()}`,
+          name: `User ${phone.slice(-4)}`, // Generate a basic name from the phone number
+          phone: phone,
+          email: undefined,
+          age: undefined
+        };
+        
+        // Save to localStorage
+        localStorage.setItem("docuvault_user", JSON.stringify(newUser));
+        
+        // Try to save to Supabase
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .insert([{
+              id: newUser.id,
+              name: newUser.name,
+              phone: newUser.phone,
+            }]);
+            
+          if (error) {
+            console.error("Failed to create profile in Supabase:", error);
+          } else {
+            console.log("Basic profile created in Supabase");
+          }
+        } catch (error) {
+          console.error("Failed to save basic user to Supabase:", error);
+        }
+        
+        // Add to mock users
+        MOCK_USERS.push(newUser);
+        
+        toast.success("Welcome to DocuVault!");
+        return true;
       }
     }
   } catch (error) {

@@ -17,49 +17,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       setIsLoading(true);
-      // First try to get user from localStorage (for our mock implementation)
-      const storedUser = localStorage.getItem("docuvault_user");
-      
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          console.log("Found stored user:", parsedUser);
-          
-          // Verify user exists in Supabase if possible
+      try {
+        // First try to get user from localStorage (for our mock implementation)
+        const storedUser = localStorage.getItem("docuvault_user");
+        
+        if (storedUser) {
           try {
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('phone', parsedUser.phone)
-              .single();
-              
-            if (data) {
-              // Use Supabase data if available
-              setUser({
-                id: data.id,
-                name: data.name || parsedUser.name,
-                phone: data.phone,
-                email: data.email,
-                age: data.age
-              });
-            } else {
-              // Fall back to localStorage data
+            const parsedUser = JSON.parse(storedUser);
+            console.log("Found stored user:", parsedUser);
+            
+            // Verify user exists in Supabase if possible
+            try {
+              // Changed to use 'eq' filter instead of 'single' to avoid errors when no matching row is found
+              const { data: profiles } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('phone', parsedUser.phone);
+                
+              if (profiles && profiles.length > 0) {
+                const profile = profiles[0];
+                // Use Supabase data if available
+                setUser({
+                  id: profile.id,
+                  name: profile.name || parsedUser.name,
+                  phone: profile.phone,
+                  email: profile.email,
+                  age: profile.age
+                });
+                console.log("Found and using profile from Supabase:", profile);
+              } else {
+                // User not found in Supabase, create it
+                console.log("User not found in Supabase, creating profile...");
+                const { error } = await supabase
+                  .from('profiles')
+                  .insert([{
+                    id: parsedUser.id,
+                    name: parsedUser.name,
+                    phone: parsedUser.phone,
+                    email: parsedUser.email,
+                    age: parsedUser.age
+                  }]);
+                  
+                if (error) {
+                  console.error("Failed to create profile in Supabase:", error);
+                } else {
+                  console.log("Profile created successfully in Supabase");
+                }
+                
+                // Use localStorage data for now
+                setUser(parsedUser);
+              }
+            } catch (error) {
+              // If Supabase query fails, use localStorage data
+              console.error("Failed to verify user in Supabase:", error);
               setUser(parsedUser);
             }
           } catch (error) {
-            // If Supabase query fails, use localStorage data
-            console.error("Failed to verify user in Supabase:", error);
-            setUser(parsedUser);
+            console.error("Failed to parse stored user:", error);
+            localStorage.removeItem("docuvault_user");
           }
-        } catch (error) {
-          console.error("Failed to parse stored user:", error);
-          localStorage.removeItem("docuvault_user");
+        } else {
+          console.log("No stored user found");
         }
-      } else {
-        console.log("No stored user found");
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        toast.error("Failed to initialize authentication");
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     initAuth();

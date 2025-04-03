@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import AuthHeader from "../components/auth/AuthHeader";
 
 const Login: React.FC = () => {
   const { sendOtp, verifyOtp, isAuthenticated, isLoading } = useAuth();
@@ -60,10 +61,8 @@ const Login: React.FC = () => {
       const success = await verifyOtp(phone, otp);
       if (success) {
         console.log("Login successful, redirecting to dashboard");
-        // Add a slight delay to allow context to update
-        setTimeout(() => {
-          navigate("/");
-        }, 500);
+        // Redirect immediately instead of using a timeout
+        navigate("/");
       }
     } finally {
       setIsSubmitting(false);
