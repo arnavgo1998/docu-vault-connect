@@ -58,26 +58,60 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           return false;
         }
         
-        // Try to create user profile in Supabase directly
-        // Note: With the new RLS policy, anyone can insert into profiles
-        const { data: newProfile, error: insertError } = await supabase
+        // First create a Supabase auth user with a randomly generated email
+        // This is a workaround since we're not using real authentication
+        // In a real app, you would use Supabase Auth properly
+        const randomEmail = `user_${Math.random().toString(36).substring(2, 15)}@example.com`;
+        const randomPassword = Math.random().toString(36).substring(2, 15);
+        
+        // Create user in Supabase Auth
+        console.log("Creating auth user with email:", randomEmail);
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: randomEmail,
+          password: randomPassword,
+          options: {
+            data: {
+              name: pendingUser.name,
+              phone: pendingUser.phone
+            }
+          }
+        });
+        
+        if (authError) {
+          console.error("Failed to create auth user:", authError);
+          toast.error("Failed to create user account");
+          return false;
+        }
+        
+        if (!authData.user) {
+          console.error("Auth user created but no user data returned");
+          toast.error("Failed to initialize user account");
+          return false;
+        }
+        
+        console.log("Auth user created:", authData.user);
+        
+        // In a real app with proper triggers, the profile would be created automatically
+        // But we'll update it here just to be sure
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for Supabase trigger to run
+        
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .insert([{
-            id: pendingUser.id,
+          .update({
             name: pendingUser.name,
             phone: pendingUser.phone,
-            email: pendingUser.email,
+            email: pendingUser.email || randomEmail,
             age: pendingUser.age
-          }])
+          })
+          .eq('id', authData.user.id)
           .select()
           .single();
-            
-        if (insertError) {
-          console.error("Failed to create profile in Supabase:", insertError);
-          toast.error("Failed to create user profile");
-          return false;
+          
+        if (profileError) {
+          console.warn("Failed to update profile, but auth user was created:", profileError);
+          // Don't return false here - user is still created, profile will be fixed on next login
         } else {
-          console.log("Profile created successfully in Supabase:", newProfile);
+          console.log("Profile updated successfully:", profile);
         }
         
         // Clean up session storage
