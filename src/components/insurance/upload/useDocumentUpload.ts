@@ -21,10 +21,19 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
   };
   
   const handleUpload = async () => {
-    if (!file || !user) {
+    if (!file) {
       toast({
         title: "Error",
-        description: "Please select a file and ensure you're logged in",
+        description: "Please select a file to upload",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!user || !user.id) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to upload documents",
         variant: "destructive"
       });
       return;
@@ -33,6 +42,7 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
     // Validate the file
     const validation = validateFile(file);
     if (!validation.valid) {
+      setUploadError(validation.error);
       toast({
         title: "Invalid file",
         description: validation.error,
@@ -48,6 +58,7 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
     try {
       // Upload the file to storage
       setProgress(30);
+      console.log("Starting file upload for user:", user.id);
       const { fileUrl, error } = await uploadFileToStorage(file, user.id);
       
       if (error) {
@@ -93,6 +104,10 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
         description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      if (uploadError) {
+        setIsUploading(false);
+      }
     }
   };
   

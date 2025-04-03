@@ -31,6 +31,10 @@ export const uploadFileToStorage = async (file: File, userId: string): Promise<{
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     
+    // Log the user ID and file path to help with debugging
+    console.log("Uploading with userID:", userId);
+    console.log("File path:", fileName);
+    
     // First, upload file to Supabase Storage
     const { data: fileData, error: uploadError } = await supabase.storage
       .from('documents')
