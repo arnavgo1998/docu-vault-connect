@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast("Logged out", {
         description: "You have been logged out successfully."
       });
-      // Force reload to ensure clean state
+      // Force reload only when logging out since we want to clear auth state
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout failed:", error);

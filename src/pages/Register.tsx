@@ -51,8 +51,8 @@ const Register: React.FC = () => {
     setIsSubmitting(false);
     
     if (isVerified) {
-      // Force reload the page to refresh the auth context
-      window.location.href = "/";
+      // Use navigate instead of reloading the page for registration
+      navigate("/", { replace: true });
     }
   };
   

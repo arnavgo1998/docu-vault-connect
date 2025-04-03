@@ -60,7 +60,7 @@ const Login: React.FC = () => {
     try {
       const success = await verifyOtp(phone, otp);
       if (success) {
-        // Force reload the page to refresh the auth context and trigger the redirect
+        // For login, we want to reload the page to refresh the auth context
         window.location.href = "/";
       }
     } finally {
