@@ -62,7 +62,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         .getPublicUrl(filePath);
       
       // Save document metadata to the database
-      const { data, error: documentError } = await supabase
+      const { data: documentData, error: documentError } = await supabase
         .from('documents')
         .insert({
           user_id: user.id,
@@ -80,11 +80,13 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       setProgress(90);
       
       // Call the existing uploadDocument function for any app-specific logic
+      const documentId = documentData && documentData.length > 0 ? documentData[0]?.id : uuidv4();
+      
       const success = await uploadDocument(file, {
-        id: data?.[0]?.id || uuidv4(),
+        id: documentId,
         fileUrl: publicUrl,
         fileSize: file.size,
-        type: "General"
+        type: "General" // Use the type property that exists in InsuranceDocument
       });
       
       if (success) {
