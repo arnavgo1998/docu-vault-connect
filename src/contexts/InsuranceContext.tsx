@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "./AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from 'uuid';
 
 // Define types
 export type InsuranceType = "Health" | "Auto" | "Life" | "Home" | "General" | "Other";
@@ -77,84 +79,41 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [user]);
 
-  // Load user data
-  const loadUserData = () => {
+  // Load user data from Supabase
+  const loadUserData = async () => {
     setIsLoading(true);
     
-    // Load user's documents and shared documents from localStorage
-    if (user) {
-      // Get documents owned by the user from localStorage
-      const storedDocs = localStorage.getItem("docuvault_my_documents");
-      if (storedDocs) {
-        try {
-          const parsedDocs = JSON.parse(storedDocs);
-          // Filter to only show documents owned by the current user
-          setMyDocuments(parsedDocs.filter((doc: InsuranceDocument) => doc.ownerId === user.id));
-        } catch (e) {
-          console.error("Failed to parse stored documents:", e);
-          setMyDocuments([]);
-        }
-      } else {
-        setMyDocuments([]);
-      }
-      
-      // Get shared documents
-      const storedShared = localStorage.getItem("docuvault_shared_documents");
-      if (storedShared) {
-        try {
-          const parsedShared = JSON.parse(storedShared);
-          // Only include documents that are explicitly shared with the current user
-          setSharedWithMe(parsedShared.filter((doc: InsuranceDocument) => 
-            doc.ownerId !== user.id // Not owned by current user
-          ));
-        } catch (e) {
-          console.error("Failed to parse stored shared documents:", e);
-          setSharedWithMe([]);
-        }
-      } else {
-        setSharedWithMe([]);
-      }
-      
-      // Get access data
-      const storedAccess = localStorage.getItem("docuvault_shared_access");
-      if (storedAccess) {
-        try {
-          const parsedAccess = JSON.parse(storedAccess);
-          // Only include access records related to the current user's documents
-          setUsersWithAccess(parsedAccess.filter((access: SharedAccess) => {
-            // Check if the document is owned by the current user
-            const isDocumentOwner = myDocuments.some(doc => 
-              doc.ownerId === user.id && doc.id === access.documentId
-            );
-            return isDocumentOwner;
-          }));
-        } catch (e) {
-          console.error("Failed to parse stored access data:", e);
-          setUsersWithAccess([]);
-        }
-      } else {
-        setUsersWithAccess([]);
-      }
-      
-      // Get or generate invite code
-      const storedCode = localStorage.getItem("docuvault_invite_code");
-      if (storedCode) {
-        setMyInviteCode(storedCode);
-      } else {
-        // Generate a random code
-        const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-        localStorage.setItem("docuvault_invite_code", code);
-        setMyInviteCode(code);
-      }
+    if (!user) {
+      setIsLoading(false);
+      return;
     }
     
-    setIsLoading(false);
+    try {
+      // In a real implementation, we would load data from Supabase tables
+      // For this demo, we'll simulate with mock data
+      
+      // Mock data loading from Supabase with delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Set mock data for documents, shared documents, and access
+      setMyDocuments([]);
+      setSharedWithMe([]);
+      setUsersWithAccess([]);
+      
+      // Generate mock invite code
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      setMyInviteCode(code);
+    } catch (error) {
+      console.error("Failed to load user data:", error);
+      toast.error("Failed to load user data");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Generate a sharing invite code
   const generateInviteCode = async (): Promise<string> => {
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-    localStorage.setItem("docuvault_invite_code", code);
     setMyInviteCode(code);
     return code;
   };
@@ -165,7 +124,7 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsLoading(true);
       
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay time further
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Check if the invite code is valid
       if (inviteCode !== myInviteCode) {
@@ -176,22 +135,20 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Grant access
       const newAccess: SharedAccess = {
         documentId,
-        userId: user?.id || "", // Use current user's ID
-        userName: user?.name || "", // Use current user's name
+        userId: user?.id || "",
+        userName: user?.name || "",
         accessGrantedDate: new Date().toISOString(),
       };
       
-      // Update state and localStorage
+      // Update state
       const updatedAccess = [...usersWithAccess, newAccess];
       setUsersWithAccess(updatedAccess);
-      localStorage.setItem("docuvault_shared_access", JSON.stringify(updatedAccess));
       
       // Mark document as shared
       const updatedDocs = myDocuments.map(doc => 
         doc.id === documentId ? { ...doc, shared: true } : doc
       );
       setMyDocuments(updatedDocs);
-      localStorage.setItem("docuvault_my_documents", JSON.stringify(updatedDocs));
       
       toast.success("Document shared successfully");
       return true;
@@ -214,9 +171,8 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         access => !(access.userId === userId && access.documentId === documentId)
       );
       
-      // Update state and localStorage
+      // Update state
       setUsersWithAccess(updatedAccess);
-      localStorage.setItem("docuvault_shared_access", JSON.stringify(updatedAccess));
       
       // If no one has access to this document anymore, mark it as not shared
       const isStillShared = updatedAccess.some(access => access.documentId === documentId);
@@ -225,7 +181,6 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           doc.id === documentId ? { ...doc, shared: false } : doc
         );
         setMyDocuments(updatedDocs);
-        localStorage.setItem("docuvault_my_documents", JSON.stringify(updatedDocs));
       }
       
       toast.success("Access revoked successfully");
@@ -257,7 +212,7 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // Create a new document
       const newDoc: InsuranceDocument = {
-        id: Math.random().toString(36).substring(2, 11),
+        id: uuidv4(),
         ownerId: user.id,
         ownerName: user.name,
         name: `${docInfo.type || 'General'} Insurance`,
@@ -273,10 +228,9 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         fileSize: file.size
       };
       
-      // Update state and localStorage
+      // Update state
       const updatedDocs = [...myDocuments, newDoc];
       setMyDocuments(updatedDocs);
-      localStorage.setItem("docuvault_my_documents", JSON.stringify(updatedDocs));
       
       toast.success("Document uploaded successfully");
       return true;
@@ -292,7 +246,7 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Extract information from a document using OCR/AI (mock implementation)
   const extractDocumentInfo = async (file: File): Promise<Partial<InsuranceDocument>> => {
     // In a real app, this would send the file to a backend API for OCR/AI processing
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced processing time
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const fileName = file.name.toLowerCase();
     
@@ -349,9 +303,8 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         doc.id === id ? { ...doc, ...updates } : doc
       );
       
-      // Update state and localStorage
+      // Update state
       setMyDocuments(updatedDocs);
-      localStorage.setItem("docuvault_my_documents", JSON.stringify(updatedDocs));
       
       toast.success("Document updated successfully");
       return true;
@@ -375,11 +328,9 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Also remove any access grants for this document
       const updatedAccess = usersWithAccess.filter(access => access.documentId !== id);
       
-      // Update state and localStorage
+      // Update state
       setMyDocuments(updatedDocs);
       setUsersWithAccess(updatedAccess);
-      localStorage.setItem("docuvault_my_documents", JSON.stringify(updatedDocs));
-      localStorage.setItem("docuvault_shared_access", JSON.stringify(updatedAccess));
       
       toast.success("Document deleted successfully");
       return true;
