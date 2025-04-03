@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,8 +6,8 @@ import { Loader2, Upload } from "lucide-react";
 import { useInsurance } from "../../contexts/InsuranceContext";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
-import { v4 as uuidv4 } from 'uuid';
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UploadDocumentProps {
   onSuccess?: () => void;
@@ -34,8 +35,28 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
     setProgress(10);
     
     try {
-      // Skip real file upload to Supabase since it's failing
-      // Instead, we'll just use the mock implementation
+      // First, upload file to Supabase Storage
+      const fileName = `${user.id}/${Date.now()}-${file.name}`;
+      const { data: fileData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      setProgress(50);
+      
+      // Get the public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+      
+      const fileUrl = publicUrlData.publicUrl;
+      
       setProgress(70);
       setProcessingInfo(true);
       
@@ -44,16 +65,10 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       
       setProgress(90);
       
-      // Generate a document ID
-      const documentId = uuidv4();
-      
-      // Use the mock implementation directly
+      // Use the uploadDocument function to store document metadata
       const success = await uploadDocument(file, {
-        id: documentId,
-        fileUrl: URL.createObjectURL(file),
-        type: docInfo.type || "General",
-        name: file.name.split('.')[0],
-        // Add any other properties that match InsuranceDocument type
+        file_url: fileUrl,
+        ...docInfo
       });
       
       if (success) {

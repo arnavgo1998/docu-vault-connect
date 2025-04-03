@@ -9,6 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      document_edits: {
+        Row: {
+          document_id: string
+          edit_type: string
+          edited_at: string | null
+          editor_id: string
+          id: string
+          new_value: Json | null
+          previous_value: Json | null
+        }
+        Insert: {
+          document_id: string
+          edit_type: string
+          edited_at?: string | null
+          editor_id: string
+          id?: string
+          new_value?: Json | null
+          previous_value?: Json | null
+        }
+        Update: {
+          document_id?: string
+          edit_type?: string
+          edited_at?: string | null
+          editor_id?: string
+          id?: string
+          new_value?: Json | null
+          previous_value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_edits_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_edits_editor_id_fkey"
+            columns: ["editor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          coverage_amount: string | null
+          created_at: string | null
+          end_date: string | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
+          id: string
+          name: string
+          owner_id: string
+          policy_number: string | null
+          premium_amount: string | null
+          provider: string
+          shared: boolean | null
+          start_date: string | null
+          type: string
+          updated_at: string | null
+          upload_date: string | null
+        }
+        Insert: {
+          coverage_amount?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          policy_number?: string | null
+          premium_amount?: string | null
+          provider: string
+          shared?: boolean | null
+          start_date?: string | null
+          type: string
+          updated_at?: string | null
+          upload_date?: string | null
+        }
+        Update: {
+          coverage_amount?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          policy_number?: string | null
+          premium_amount?: string | null
+          provider?: string
+          shared?: boolean | null
+          start_date?: string | null
+          type?: string
+          updated_at?: string | null
+          upload_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age: number | null
@@ -38,6 +151,52 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      shared_documents: {
+        Row: {
+          document_id: string
+          id: string
+          shared_at: string | null
+          shared_by_id: string
+          shared_with_id: string
+        }
+        Insert: {
+          document_id: string
+          id?: string
+          shared_at?: string | null
+          shared_by_id: string
+          shared_with_id: string
+        }
+        Update: {
+          document_id?: string
+          id?: string
+          shared_at?: string | null
+          shared_by_id?: string
+          shared_with_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_shared_by_id_fkey"
+            columns: ["shared_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_shared_with_id_fkey"
+            columns: ["shared_with_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
