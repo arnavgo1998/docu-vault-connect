@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogOut, User, Users } from "lucide-react";
+import { Loader2, LogOut, User, Users, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ProfilePage: React.FC = () => {
@@ -47,9 +46,19 @@ const ProfilePage: React.FC = () => {
   
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-        <p className="text-gray-500 mt-1">Manage your account and access settings</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+          <p className="text-gray-500 mt-1">Manage your account and access settings</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2"
+        >
+          <Home className="h-4 w-4" />
+          Dashboard
+        </Button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

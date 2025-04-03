@@ -11,7 +11,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import EditDocument from "./EditDocument";
 import { useInsurance } from "../../contexts/InsuranceContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -44,6 +44,7 @@ const InsuranceCard: React.FC<InsuranceCardProps> = ({ document, isShared = fals
   const { updateDocument, deleteDocument } = useInsurance();
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isViewingDetails, setIsViewingDetails] = useState(false);
   
   const isOwner = document.ownerId === user?.id;
   const cardColor = getCardColor(document.type);
@@ -123,7 +124,7 @@ const InsuranceCard: React.FC<InsuranceCardProps> = ({ document, isShared = fals
             <CalendarClock className="h-3 w-3 mr-1" />
             <span>Due: {formattedDueDate}</span>
           </div>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => setIsViewingDetails(true)}>
             <FileText className="h-4 w-4 mr-1" />
             View
           </Button>
@@ -144,6 +145,61 @@ const InsuranceCard: React.FC<InsuranceCardProps> = ({ document, isShared = fals
             }}
             onCancel={() => setIsEditing(false)}
           />
+        </DialogContent>
+      </Dialog>
+      
+      {/* View Document Dialog */}
+      <Dialog open={isViewingDetails} onOpenChange={setIsViewingDetails}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{document.name}</DialogTitle>
+            <DialogDescription>Insurance details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Insurance Type</p>
+                <p className="font-medium">{document.type}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Provider</p>
+                <p className="font-medium">{document.provider}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Policy Number</p>
+                <p className="font-medium">{document.policyNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Premium</p>
+                <p className="font-medium">{document.premium}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Due Date</p>
+                <p className="font-medium">{formattedDueDate}</p>
+              </div>
+              {isShared && (
+                <div>
+                  <p className="text-sm text-gray-500">Owner</p>
+                  <p className="font-medium">{document.ownerName}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-gray-500">Upload Date</p>
+                <p className="font-medium">{new Date(document.uploadDate).toLocaleDateString()}</p>
+              </div>
+            </div>
+            
+            <div className="border-t pt-4">
+              <p className="text-sm text-gray-500 mb-2">Document Preview</p>
+              <div className="aspect-video bg-gray-100 flex items-center justify-center rounded-md">
+                <FileText className="h-12 w-12 text-gray-400" />
+                <p className="text-gray-500 ml-2">Document preview not available</p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsViewingDetails(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       

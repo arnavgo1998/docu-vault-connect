@@ -1,37 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
-
-// Define types
-type AuthUser = {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  age?: number;
-};
-
-type AuthContextType = {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (phone: string, otp: string) => Promise<boolean>;
-  logout: () => void;
-  register: (userData: Omit<AuthUser, "id">) => Promise<boolean>;
-  sendOtp: (phone: string) => Promise<boolean>;
-  verifyOtp: (phone: string, otp: string) => Promise<boolean>;
-};
-
-// Mock user database for demo purposes
-const MOCK_USERS: AuthUser[] = [
-  {
-    id: "1",
-    name: "Test User",
-    phone: "1234567890",
-    email: "test@example.com",
-    age: 30,
-  },
-];
+import { AuthUser, AuthContextType } from "./auth/types";
+import { MOCK_USERS } from "./auth/mockData";
+import { sendOtp as sendOtpUtil, verifyOtp as verifyOtpUtil } from "./auth/authUtils";
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,50 +27,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  // Send OTP (mock implementation)
+  // Send OTP
   const sendOtp = async (phone: string): Promise<boolean> => {
-    try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Check if user exists
-      const userExists = MOCK_USERS.some((u) => u.phone === phone);
-      
-      // In a real app, this would send an actual OTP via SMS
-      // For demo purposes, the OTP is always "123456"
-      console.log("OTP sent to", phone, "- Use '123456' for testing");
-      toast.success("OTP sent successfully! (Use '123456' for testing)");
-      
-      // For demo: pretend we've sent an OTP
-      localStorage.setItem("docuvault_pending_phone", phone);
-      return true;
-    } catch (error) {
-      console.error("Failed to send OTP:", error);
-      toast.error("Failed to send OTP. Please try again.");
-      return false;
-    }
+    return sendOtpUtil(phone);
   };
 
-  // Verify OTP (mock implementation)
+  // Verify OTP
   const verifyOtp = async (phone: string, otp: string): Promise<boolean> => {
-    try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // For demo: only "123456" is valid
-      const isValid = otp === "123456";
-      
-      if (!isValid) {
-        toast.error("Invalid OTP. Please try again.");
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Failed to verify OTP:", error);
-      toast.error("Failed to verify OTP. Please try again.");
-      return false;
-    }
+    return verifyOtpUtil(phone, otp);
   };
 
   // Login with phone and OTP
