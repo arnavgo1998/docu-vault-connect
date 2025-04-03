@@ -1,73 +1,62 @@
-# Welcome to your Lovable project
 
-## Project info
+# DocuVault Connect - Insurance Document Management
 
-**URL**: https://lovable.dev/projects/5e10629e-c0fe-4a57-b8bb-8047f6fff73a
+DocuVault Connect is a mobile-friendly web application that enables users to securely store, manage, and share their insurance documents. The application provides automatic extraction of policy details from uploaded documents and allows sharing with trusted contacts.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Secure Document Storage**: Upload and manage insurance documents in one place
+- **Automatic Information Extraction**: Extract policy details like policy number, provider, and premium
+- **Document Sharing**: Share documents with others using invite codes
+- **Access Management**: Control who has access to your shared documents
+- **Mobile-Friendly Design**: Optimized for mobile devices
 
-**Use Lovable**
+## Test User Details
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5e10629e-c0fe-4a57-b8bb-8047f6fff73a) and start prompting.
+For demo purposes, you can use the following test credentials:
 
-Changes made via Lovable will be committed automatically to this repo.
+**Phone Number**: 1234567890  
+**OTP Code**: 123456 (always works for testing)
 
-**Use your preferred IDE**
+## Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Register with your phone number and complete the verification process
+2. Upload insurance documents to your dashboard
+3. View extracted information automatically
+4. Share documents with others using your unique invite code
+5. Manage access to your shared documents
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Document Information Extraction
 
-Follow these steps:
+The system automatically extracts the following information from uploaded documents:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. Insurance type (Health, Auto, Life, etc.)
+2. Policy number
+3. Provider name
+4. Premium amount and due date
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Sharing Documents
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. Generate your unique invite code from the dashboard or profile page
+2. Share this code with others
+3. They can enter this code along with the document ID to gain access
+4. Manage or revoke access at any time from your profile
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## Development
 
 This project is built with:
 
-- Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
 - Tailwind CSS
+- shadcn/ui components
 
-## How can I deploy this project?
+## Local Development
 
-Simply open [Lovable](https://lovable.dev/projects/5e10629e-c0fe-4a57-b8bb-8047f6fff73a) and click on Share -> Publish.
+```bash
+# Install dependencies
+npm install
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes it is!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+# Start the development server
+npm run dev
+```
