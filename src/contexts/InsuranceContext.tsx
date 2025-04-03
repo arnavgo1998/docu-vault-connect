@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "./AuthContext";
@@ -19,6 +18,8 @@ export type InsuranceDocument = {
   uploadDate: string;
   fileUrl: string;
   shared: boolean;
+  fileType?: string;
+  fileSize?: number;
 };
 
 export type SharedAccess = {
@@ -325,6 +326,8 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         uploadDate: new Date().toISOString(),
         fileUrl: URL.createObjectURL(file), // In a real app, this would be a server URL
         shared: false,
+        fileType: file.type,
+        fileSize: file.size
       };
       
       // Update state and localStorage

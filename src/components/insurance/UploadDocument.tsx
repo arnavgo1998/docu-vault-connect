@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,9 +85,9 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       const success = await uploadDocument(file, {
         id: documentId,
         fileUrl: publicUrl,
-        fileType: file.type,
-        size: file.size,
-        type: "General" // Use the type property that exists in InsuranceDocument
+        // Use property names that match InsuranceDocument type
+        type: "General", // This is already correct
+        // Make sure we don't use properties that don't exist in the type
       });
       
       if (success) {
