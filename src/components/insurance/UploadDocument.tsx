@@ -30,14 +30,24 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
   };
   
   const handleUpload = async () => {
-    if (!file || !user) return;
+    if (!file || !user) {
+      toast({
+        title: "Error",
+        description: "Please select a file and ensure you're logged in",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsUploading(true);
     setProgress(10);
     
     try {
+      // Create a safe filename to avoid special characters issues
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
       // First, upload file to Supabase Storage
-      const fileName = `${user.id}/${Date.now()}-${file.name}`;
       const { data: fileData, error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, file, {
@@ -46,7 +56,8 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         });
 
       if (uploadError) {
-        throw uploadError;
+        console.error("Storage upload error:", uploadError);
+        throw new Error(`Storage error: ${uploadError.message}`);
       }
 
       setProgress(50);
@@ -56,7 +67,12 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         .from('documents')
         .getPublicUrl(fileName);
       
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        throw new Error("Failed to get public URL for uploaded file");
+      }
+      
       const fileUrl = publicUrlData.publicUrl;
+      console.log("File uploaded, public URL:", fileUrl);
       
       setProgress(70);
       setProcessingInfo(true);
@@ -68,7 +84,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       
       // Use the uploadDocument function to store document metadata
       const success = await uploadDocument(file, {
-        fileUrl: fileUrl, // Use fileUrl instead of file_url to match InsuranceDocument type
+        fileUrl: fileUrl,
         ...docInfo
       });
       
@@ -84,12 +100,14 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
             onSuccess();
           }, 500);
         }
+      } else {
+        throw new Error("Failed to record document metadata");
       }
     } catch (error) {
       console.error("Upload failed:", error);
       toast({
         title: "Upload failed",
-        description: "There was a problem uploading your document.",
+        description: error instanceof Error ? error.message : "There was a problem uploading your document.",
         variant: "destructive"
       });
     } finally {
