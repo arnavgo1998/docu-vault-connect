@@ -334,26 +334,34 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         docInfo = await extractDocumentInfo(file);
       }
 
+      // Prepare the document data with required fields
+      const documentData = {
+        owner_id: user.id,
+        name: docInfo.name || `${docInfo.type || 'General'} Insurance`,
+        type: docInfo.type || "General",
+        provider: docInfo.provider || "Unknown Provider",
+        policy_number: docInfo.policyNumber || '',
+        premium_amount: docInfo.premium || '',
+        file_url: docInfo.fileUrl || '',
+        file_type: file.type,
+        file_size: file.size,
+        upload_date: new Date().toISOString(),
+        shared: false
+      };
+
+      console.log("Inserting document with data:", documentData);
+      
       // Create document record in Supabase
       const { data, error } = await supabase
         .from('documents')
-        .insert({
-          owner_id: user.id,
-          name: docInfo.name || `${docInfo.type || 'General'} Insurance`,
-          type: docInfo.type || "General",
-          provider: docInfo.provider || "Unknown Provider",
-          policy_number: docInfo.policyNumber,
-          premium_amount: docInfo.premium,
-          file_url: docInfo.fileUrl,
-          file_type: file.type,
-          file_size: file.size,
-          upload_date: new Date().toISOString(),
-          shared: false
-        })
+        .insert(documentData)
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error("Failed to upload document:", error);
+        throw error;
+      }
       
       // Refresh the user data
       await loadUserData();

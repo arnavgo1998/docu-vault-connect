@@ -65,6 +65,10 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
         throw new Error(error);
       }
       
+      if (!fileUrl) {
+        throw new Error("No file URL returned after upload");
+      }
+      
       setProgress(50);
       
       // Extract document info
@@ -76,10 +80,15 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
       
       // Use the uploadDocument function to store document metadata
       console.log("Uploading document metadata with file URL:", fileUrl);
-      const success = await uploadDocument(file, {
+      const docData = {
         fileUrl: fileUrl,
+        fileType: file.type,
+        fileSize: file.size,
+        name: docInfo.name || file.name,
         ...docInfo
-      });
+      };
+      
+      const success = await uploadDocument(file, docData);
       
       if (success) {
         setProgress(100);

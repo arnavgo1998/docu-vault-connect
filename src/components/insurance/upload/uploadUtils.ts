@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 export const validateFile = (file: File): { valid: boolean; error?: string } => {
   // Validate file type
@@ -41,21 +40,25 @@ export const uploadFileToStorage = async (file: File, userId: string): Promise<{
     console.log("Uploading with userID:", userId);
     console.log("File path:", fileName);
     
-    // Check if storage bucket exists, create it if it doesn't
+    // Check if storage bucket exists
     const { data: buckets } = await supabase.storage.listBuckets();
     if (!buckets?.some(bucket => bucket.name === 'documents')) {
       console.log("Documents bucket not found, creating one...");
-      const { error: bucketError } = await supabase.storage.createBucket('documents', {
-        public: true
-      });
-      
-      if (bucketError) {
-        console.error("Error creating bucket:", bucketError);
-        // Continue anyway as the bucket might exist but not be visible to the current user
+      try {
+        const { error: bucketError } = await supabase.storage.createBucket('documents', {
+          public: true
+        });
+        
+        if (bucketError) {
+          console.error("Error creating bucket:", bucketError);
+        }
+      } catch (err) {
+        console.error("Could not create bucket:", err);
+        // Continue anyway as bucket might exist
       }
     }
     
-    // Standard upload with auth from Supabase context
+    // Upload the file
     const { data: fileData, error: uploadError } = await supabase.storage
       .from('documents')
       .upload(fileName, file, {
