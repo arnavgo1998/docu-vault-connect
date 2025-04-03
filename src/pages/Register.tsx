@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ const Register: React.FC = () => {
     phone: "",
     email: "",
     age: "",
-    password: "",
   });
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +57,6 @@ const Register: React.FC = () => {
         phone: formData.phone,
         email: formData.email || undefined,
         age: formData.age ? parseInt(formData.age) : undefined,
-        password: formData.password || "default123",
       };
       
       const success = await register(userData);
@@ -139,23 +138,10 @@ const Register: React.FC = () => {
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
               <Button 
                 type="submit" 
                 className="w-full bg-docuvault-primary hover:bg-docuvault-primary/90"
-                disabled={isSubmitting || !formData.name || !formData.phone || !formData.password}
+                disabled={isSubmitting || !formData.name || !formData.phone}
               >
                 {isSubmitting ? (
                   <>
