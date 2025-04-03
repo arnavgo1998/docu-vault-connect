@@ -65,9 +65,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Register with phone and optional details
-  const register = async (userData: AuthUser): Promise<boolean> => {
+  const register = async (userData: Omit<AuthUser, 'id'>): Promise<boolean> => {
     try {
       setIsLoading(true);
+      
+      // Basic validation
+      if (!userData.name || !userData.phone) {
+        toast.error("Name and phone number are required");
+        return false;
+      }
       
       console.log("Registering user with data:", userData);
       
@@ -75,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // This is only temporary until OTP verification completes
       sessionStorage.setItem("docuvault_pending_user", JSON.stringify(userData));
       
-      console.log("User registration prepared:", userData);
+      console.log("User registration prepared");
       toast("Verification needed", {
         description: "We'll send a verification code to your phone"
       });
@@ -83,9 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error) {
       console.error("Registration failed:", error);
-      toast("Error", {
-        description: "Registration failed. Please try again."
-      });
+      toast.error("Registration failed. Please try again.");
       return false;
     } finally {
       setIsLoading(false);
@@ -98,16 +102,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear local storage
       localStorage.removeItem("docuvault_user");
       setUser(null);
-      toast("Logged out", {
-        description: "You have been logged out successfully."
-      });
-      // Just navigate instead of reloading
+      toast.success("Logged out successfully");
+      
+      // Navigate to login page
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout failed:", error);
-      toast("Error", {
-        description: "Logout failed. Please try again."
-      });
+      toast.error("Logout failed. Please try again.");
     }
   };
 

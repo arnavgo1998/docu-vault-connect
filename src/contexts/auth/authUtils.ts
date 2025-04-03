@@ -58,7 +58,25 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           return false;
         }
         
-        // Create profile record directly without foreign key constraint
+        // First check if user with this phone already exists
+        const { data: existingProfiles, error: lookupError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('phone', pendingUser.phone);
+          
+        if (lookupError) {
+          console.error("Failed to check for existing profile:", lookupError);
+          toast.error("Failed to check for existing user. Please try again.");
+          return false;
+        }
+        
+        if (existingProfiles && existingProfiles.length > 0) {
+          console.log("User with this phone already exists:", existingProfiles[0]);
+          toast.error("An account with this phone number already exists. Please log in instead.");
+          return false;
+        }
+        
+        // Create profile record
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .insert([{
@@ -86,9 +104,6 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         localStorage.setItem("docuvault_user", JSON.stringify(profile));
         
         toast.success("Account created successfully!");
-        
-        // Redirect to home page
-        window.location.href = "/";
         return true;
       } catch (error) {
         console.error("Registration error:", error);
@@ -123,9 +138,6 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           sessionStorage.removeItem("docuvault_pending_phone");
           
           toast.success("Welcome back!");
-          
-          // Redirect to home page
-          window.location.href = "/";
           return true;
         } else {
           // No existing user - inform the user they need to register first

@@ -6,7 +6,6 @@ import Layout from "../components/layout/Layout";
 import AuthHeader from "../components/auth/AuthHeader";
 import RegistrationDetailsForm from "../components/auth/RegistrationDetailsForm";
 import OtpVerificationForm from "../components/auth/OtpVerificationForm";
-import { v4 as uuidv4 } from 'uuid';
 
 const Register: React.FC = () => {
   const [step, setStep] = useState<"details" | "verify">("details");
@@ -28,42 +27,54 @@ const Register: React.FC = () => {
   const handleSendOtp = async () => {
     setIsSubmitting(true);
     
-    // First register the user data to prepare for OTP verification
-    const userData = {
-      id: uuidv4(), // Generate a UUID, but this won't be used in the new structure
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email || undefined,
-      age: formData.age ? parseInt(formData.age) : undefined,
-    };
-    
-    console.log("Registering user with data:", userData);
-    
-    // Call register to store the pending user
-    const registered = await register(userData);
-    
-    if (!registered) {
+    try {
+      // First register the user data to prepare for OTP verification
+      const userData = {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || undefined,
+        age: formData.age ? parseInt(formData.age) : undefined,
+      };
+      
+      console.log("Registering user with data:", userData);
+      
+      // Call register to store the pending user
+      const registered = await register(userData);
+      
+      if (!registered) {
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Then send OTP
+      const success = await sendOtp(formData.phone);
+      
+      if (success) {
+        setStep("verify");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Registration failed. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      return;
-    }
-    
-    // Then send OTP
-    const success = await sendOtp(formData.phone);
-    setIsSubmitting(false);
-    
-    if (success) {
-      setStep("verify");
     }
   };
   
   const handleVerifyAndRegister = async (otp: string) => {
     setIsSubmitting(true);
-    const isVerified = await verifyOtp(formData.phone, otp);
-    setIsSubmitting(false);
     
-    if (isVerified) {
-      // Use navigate instead of reloading the page for registration
-      navigate("/", { replace: true });
+    try {
+      const isVerified = await verifyOtp(formData.phone, otp);
+      
+      if (isVerified) {
+        // Navigate to home page upon successful verification
+        navigate("/", { replace: true });
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      toast.error("Verification failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
   

@@ -41,6 +41,8 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
           value={otp}
           onChange={(e) => setOtp(e.target.value)}
           required
+          maxLength={6}
+          className="text-center text-xl tracking-wider"
         />
         <p className="text-xs text-gray-500">
           For demo, use: 123456
