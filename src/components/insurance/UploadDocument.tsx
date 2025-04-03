@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +70,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
           file_path: filePath,
           file_type: file.type,
           file_size: file.size
-        });
+        }).select().single();
       
       if (documentError) {
         throw documentError;
@@ -80,12 +79,13 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       setProgress(90);
       
       // Call the existing uploadDocument function for any app-specific logic
-      const documentId = documentData && documentData.length > 0 ? documentData[0]?.id : uuidv4();
+      const documentId = documentData?.id || uuidv4();
       
       const success = await uploadDocument(file, {
         id: documentId,
         fileUrl: publicUrl,
-        fileSize: file.size,
+        fileType: file.type,
+        size: file.size,
         type: "General" // Use the type property that exists in InsuranceDocument
       });
       
