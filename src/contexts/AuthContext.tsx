@@ -23,7 +23,7 @@ type AuthContextType = {
 };
 
 // Mock user database for demo purposes
-const MOCK_USERS = [
+const MOCK_USERS: AuthUser[] = [
   {
     id: "1",
     name: "Test User",
