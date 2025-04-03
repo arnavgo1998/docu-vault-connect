@@ -22,7 +22,7 @@ const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/");
+      navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
   
@@ -60,8 +60,8 @@ const Login: React.FC = () => {
     try {
       const success = await verifyOtp(phone, otp);
       if (success) {
-        // Navigate to dashboard immediately
-        navigate("/");
+        // Force reload the page to refresh the auth context and trigger the redirect
+        window.location.href = "/";
       }
     } finally {
       setIsSubmitting(false);

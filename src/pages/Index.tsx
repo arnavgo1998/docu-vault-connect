@@ -10,7 +10,7 @@ const Index: React.FC = () => {
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      navigate("/login");
+      navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
   

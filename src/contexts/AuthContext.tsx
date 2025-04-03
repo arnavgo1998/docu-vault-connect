@@ -47,10 +47,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               } else {
                 // User not found in Supabase, create it
                 console.log("User not found in Supabase, creating profile...");
+                
+                // Generate a proper UUID for Supabase to avoid the invalid input syntax error
+                const { data: { user: supaUser } } = await supabase.auth.getUser();
+                const profileId = supaUser?.id || crypto.randomUUID();
+                
                 const { error } = await supabase
                   .from('profiles')
                   .insert([{
-                    id: parsedUser.id,
+                    id: profileId,
                     name: parsedUser.name,
                     phone: parsedUser.phone,
                     email: parsedUser.email,
@@ -61,6 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   console.error("Failed to create profile in Supabase:", error);
                 } else {
                   console.log("Profile created successfully in Supabase");
+                  
+                  // Update local user with the proper UUID
+                  parsedUser.id = profileId;
+                  localStorage.setItem("docuvault_user", JSON.stringify(parsedUser));
                 }
                 
                 // Use localStorage data
@@ -96,9 +105,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Registering user with data:", userData);
       
-      // Create new user object
+      // Create new user object with proper UUID for Supabase
       const newUser: AuthUser = {
-        id: `user_${Date.now()}`,
+        id: crypto.randomUUID(),
         name: userData.name,
         phone: userData.phone,
         email: userData.email,
@@ -133,6 +142,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast("Logged out", {
         description: "You have been logged out successfully."
       });
+      // Force reload to ensure clean state
+      window.location.href = "/login";
     } catch (error) {
       console.error("Logout failed:", error);
       toast("Error", {
