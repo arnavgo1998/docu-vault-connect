@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -49,23 +48,16 @@ export const uploadFileToStorage = async (file: File, userId: string): Promise<{
       // Try to get user from local storage as fallback for development
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
-        // If still no user, we need to use a special auth approach for the mock auth system
+        // If still no user, we need to upload the file with the public key only
+        // and rely on our RLS policies to allow the upload
         console.warn("Using development auth approach. In production, users must be authenticated with Supabase Auth.");
         
-        // Set auth headers manually for this request in development mode
-        const devAuthHeaders = {
-          headers: {
-            Authorization: `Bearer ${userId}`
-          }
-        };
-        
-        // Upload with manual auth headers
+        // For development, upload without custom headers, we'll rely on RLS policies
         const { data: fileData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file, {
             cacheControl: '3600',
-            upsert: false,
-            ...devAuthHeaders
+            upsert: false
           });
           
         if (uploadError) {
@@ -73,10 +65,10 @@ export const uploadFileToStorage = async (file: File, userId: string): Promise<{
           throw new Error(`Storage error: ${uploadError.message}`);
         }
         
-        // Get public URL with same auth headers
+        // Get public URL
         const { data: publicUrlData } = supabase.storage
           .from('documents')
-          .getPublicUrl(fileName, devAuthHeaders);
+          .getPublicUrl(fileName);
           
         if (!publicUrlData || !publicUrlData.publicUrl) {
           throw new Error("Failed to get public URL for uploaded file");
