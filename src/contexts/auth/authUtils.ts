@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { AuthUser } from "./types";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,10 +66,14 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         return false;
       }
       
+      // Generate a proper UUID for Supabase
+      const userId = crypto.randomUUID();
+      pendingUser.id = userId;
+      
       // Save the new user to localStorage (for our mock auth system)
       localStorage.setItem("docuvault_user", JSON.stringify(pendingUser));
       
-      // Try to save to Supabase if available
+      // Try to save to Supabase
       try {
         // Check if user already exists in Supabase by phone
         const { data: existingProfiles } = await supabase
@@ -94,10 +99,11 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           }
         } else {
           // Create new profile
+          console.log("Creating new profile in Supabase with ID:", userId);
           const { error } = await supabase
             .from('profiles')
             .insert([{
-              id: pendingUser.id,
+              id: userId,
               name: pendingUser.name,
               phone: pendingUser.phone,
               email: pendingUser.email,

@@ -48,14 +48,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // User not found in Supabase, create it
                 console.log("User not found in Supabase, creating profile...");
                 
-                // Generate a proper UUID for Supabase to avoid the invalid input syntax error
-                const { data: { user: supaUser } } = await supabase.auth.getUser();
-                const profileId = supaUser?.id || crypto.randomUUID();
+                // Generate a proper UUID for Supabase
+                const userId = crypto.randomUUID();
                 
                 const { error } = await supabase
                   .from('profiles')
                   .insert([{
-                    id: profileId,
+                    id: userId,
                     name: parsedUser.name,
                     phone: parsedUser.phone,
                     email: parsedUser.email,
@@ -68,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   console.log("Profile created successfully in Supabase");
                   
                   // Update local user with the proper UUID
-                  parsedUser.id = profileId;
+                  parsedUser.id = userId;
                   localStorage.setItem("docuvault_user", JSON.stringify(parsedUser));
                 }
                 

@@ -27,16 +27,18 @@ const Register: React.FC = () => {
   const handleSendOtp = async () => {
     setIsSubmitting(true);
     
+    // First register the user data to prepare for OTP verification
     const userData = {
-      id: `user_${Date.now()}`,
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,
       age: formData.age ? parseInt(formData.age) : undefined,
     };
     
-    localStorage.setItem("docuvault_pending_user", JSON.stringify(userData));
+    // Call register to store the pending user
+    await register(userData);
     
+    // Then send OTP
     const success = await sendOtp(formData.phone);
     setIsSubmitting(false);
     
