@@ -29,9 +29,25 @@ const Register: React.FC = () => {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.phone) return;
+    if (!formData.name || !formData.phone) {
+      toast.error("Name and phone number are required");
+      return;
+    }
     
     setIsSubmitting(true);
+    
+    // Store the user data in localStorage to be used after OTP verification
+    const userData = {
+      id: `user_${Date.now()}`,
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email || undefined,
+      age: formData.age ? parseInt(formData.age) : undefined,
+    };
+    
+    localStorage.setItem("docuvault_pending_user", JSON.stringify(userData));
+    
+    // Send OTP
     const success = await sendOtp(formData.phone);
     setIsSubmitting(false);
     
@@ -43,30 +59,22 @@ const Register: React.FC = () => {
   const handleVerifyAndRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!otp) return;
+    if (!otp) {
+      toast.error("Please enter verification code");
+      return;
+    }
     
     setIsSubmitting(true);
     
     // Verify OTP
     const isVerified = await verifyOtp(formData.phone, otp);
     
-    if (isVerified) {
-      // Register user
-      const userData = {
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email || undefined,
-        age: formData.age ? parseInt(formData.age) : undefined,
-      };
-      
-      const success = await register(userData);
-      
-      if (success) {
-        navigate("/");
-      }
-    }
-    
     setIsSubmitting(false);
+    
+    if (isVerified) {
+      // Registration is handled in verifyOtp, navigate to home
+      navigate("/");
+    }
   };
   
   return (

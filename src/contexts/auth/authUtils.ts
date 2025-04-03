@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { AuthUser } from "./types";
 import { MOCK_USERS } from "./mockData";
@@ -51,14 +52,29 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
       const pendingUser = JSON.parse(pendingUserJson);
       console.log("Creating new user from pending data:", pendingUser);
       
+      // Make sure the user we're creating has all required fields
+      if (!pendingUser.name || !pendingUser.phone) {
+        toast.error("Missing required user information");
+        return false;
+      }
+      
       // Save the new user
-      localStorage.setItem("docuvault_user", pendingUserJson);
+      localStorage.setItem("docuvault_user", JSON.stringify(pendingUser));
       localStorage.removeItem("docuvault_pending_user");
+      localStorage.removeItem("docuvault_pending_phone");
       
       // Add to our mock database for future logins
-      MOCK_USERS.push(pendingUser);
+      const existingUserIndex = MOCK_USERS.findIndex(u => u.phone === pendingUser.phone);
+      if (existingUserIndex >= 0) {
+        // Update existing user
+        MOCK_USERS[existingUserIndex] = pendingUser;
+      } else {
+        // Add new user
+        MOCK_USERS.push(pendingUser);
+      }
       
       toast.success("Account created successfully!");
+      return true;
     } else {
       // We're in a login flow - find the existing user
       const existingUser = MOCK_USERS.find(u => u.phone === phone);
@@ -67,15 +83,15 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
         // Existing user - sign in
         console.log("Logging in existing user:", existingUser);
         localStorage.setItem("docuvault_user", JSON.stringify(existingUser));
+        localStorage.removeItem("docuvault_pending_phone");
         toast.success("Welcome back!");
+        return true;
       } else {
         // No such user
         toast.error("User not found. Please register first.");
         return false;
       }
     }
-    
-    return true;
   } catch (error) {
     console.error("Failed to verify OTP:", error);
     toast.error("Failed to verify OTP. Please try again.");

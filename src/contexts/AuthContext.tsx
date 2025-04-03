@@ -1,9 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { AuthUser, AuthContextType } from "./auth/types";
-import { supabase } from "@/integrations/supabase/client";
-import { Session } from "@supabase/supabase-js";
 import { sendOtp, verifyOtp } from "./auth/authUtils";
 
 // Create context
@@ -55,18 +53,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("docuvault_pending_user", JSON.stringify(newUser));
       
       console.log("User registration prepared:", newUser);
-      toast({
-        title: "Verification needed",
+      toast("Verification needed", {
         description: "We'll send a verification code to your phone"
       });
       
       return true;
     } catch (error) {
       console.error("Registration failed:", error);
-      toast({
-        title: "Error",
-        description: "Registration failed. Please try again.",
-        variant: "destructive"
+      toast("Error", {
+        description: "Registration failed. Please try again."
       });
       return false;
     } finally {
@@ -79,16 +74,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       localStorage.removeItem("docuvault_user");
       setUser(null);
-      toast({
-        title: "Logged out",
+      toast("Logged out", {
         description: "You have been logged out successfully."
       });
     } catch (error) {
       console.error("Logout failed:", error);
-      toast({
-        title: "Error",
-        description: "Logout failed. Please try again.",
-        variant: "destructive"
+      toast("Error", {
+        description: "Logout failed. Please try again."
       });
     }
   };
