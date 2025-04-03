@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "./AuthContext";
@@ -166,7 +165,7 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsLoading(true);
       
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay time further
       
       // Check if the invite code is valid
       if (inviteCode !== myInviteCode) {
