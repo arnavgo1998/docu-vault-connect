@@ -30,7 +30,7 @@ const Register: React.FC = () => {
     
     // First register the user data to prepare for OTP verification
     const userData = {
-      id: uuidv4(), // Generate a proper UUID for Supabase
+      id: uuidv4(), // Generate a UUID, but this won't be used in the new structure
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,

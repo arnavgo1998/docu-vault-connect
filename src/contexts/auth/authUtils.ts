@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const sendOtp = async (phone: string): Promise<boolean> => {
   try {
     // For demo purposes, we'll use a mock implementation
-    // In a real app, this would use Supabase Auth with a phone provider or a 3rd party SMS service
+    // In a real app, this would use a 3rd party SMS service
     
     // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -58,14 +58,14 @@ export const verifyOtp = async (phone: string, otp: string): Promise<boolean> =>
           return false;
         }
         
-        // Create profile record directly
+        // Create profile record directly without foreign key constraint
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .insert([{
-            id: pendingUser.id,
             name: pendingUser.name,
             phone: pendingUser.phone,
-            email: pendingUser.email
+            email: pendingUser.email || null,
+            age: pendingUser.age || null
           }])
           .select()
           .single();
