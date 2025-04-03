@@ -28,51 +28,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Verify user exists in Supabase if possible
             try {
-              const { data: profiles } = await supabase
+              const { data: profiles, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('phone', parsedUser.phone);
                 
+              if (error) {
+                console.error("Error fetching profile:", error);
+              }
+                
               if (profiles && profiles.length > 0) {
                 const profile = profiles[0];
                 // Use Supabase data if available
+                console.log("Found profile in Supabase:", profile);
                 setUser({
                   id: profile.id,
                   name: profile.name || parsedUser.name,
-                  phone: profile.phone,
+                  phone: profile.phone || parsedUser.phone,
                   email: profile.email,
                   age: profile.age
                 });
-                console.log("Found and using profile from Supabase:", profile);
               } else {
-                // User not found in Supabase, create it
+                // User not found in Supabase, try to create it
                 console.log("User not found in Supabase, creating profile...");
                 
-                // Generate a proper UUID for Supabase
-                const userId = crypto.randomUUID();
-                
-                const { error } = await supabase
+                const { error: insertError } = await supabase
                   .from('profiles')
                   .insert([{
-                    id: userId,
+                    id: parsedUser.id,
                     name: parsedUser.name,
                     phone: parsedUser.phone,
                     email: parsedUser.email,
                     age: parsedUser.age
                   }]);
                   
-                if (error) {
-                  console.error("Failed to create profile in Supabase:", error);
+                if (insertError) {
+                  console.error("Failed to create profile in Supabase:", insertError);
+                  setUser(parsedUser); // Use localStorage data as fallback
                 } else {
                   console.log("Profile created successfully in Supabase");
-                  
-                  // Update local user with the proper UUID
-                  parsedUser.id = userId;
-                  localStorage.setItem("docuvault_user", JSON.stringify(parsedUser));
+                  setUser(parsedUser);
                 }
-                
-                // Use localStorage data
-                setUser(parsedUser);
               }
             } catch (error) {
               // If Supabase query fails, use localStorage data
@@ -98,25 +94,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Register with phone and optional details
-  const register = async (userData: Omit<AuthUser, "id">): Promise<boolean> => {
+  const register = async (userData: AuthUser): Promise<boolean> => {
     try {
       setIsLoading(true);
       
       console.log("Registering user with data:", userData);
       
-      // Create new user object with proper UUID for Supabase
-      const newUser: AuthUser = {
-        id: crypto.randomUUID(),
-        name: userData.name,
-        phone: userData.phone,
-        email: userData.email,
-        age: userData.age
-      };
-      
       // Store user for later (will be used after OTP verification)
-      localStorage.setItem("docuvault_pending_user", JSON.stringify(newUser));
+      localStorage.setItem("docuvault_pending_user", JSON.stringify(userData));
       
-      console.log("User registration prepared:", newUser);
+      console.log("User registration prepared:", userData);
       toast("Verification needed", {
         description: "We'll send a verification code to your phone"
       });

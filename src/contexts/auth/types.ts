@@ -13,7 +13,7 @@ export type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   logout: () => void;
-  register: (userData: Omit<AuthUser, "id"> & { password?: string }) => Promise<boolean>;
+  register: (userData: AuthUser) => Promise<boolean>;
   sendOtp: (phone: string) => Promise<boolean>;
   verifyOtp: (phone: string, otp: string) => Promise<boolean>;
 };
