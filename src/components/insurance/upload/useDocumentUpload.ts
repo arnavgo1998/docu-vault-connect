@@ -3,8 +3,7 @@ import { useState } from "react";
 import { useInsurance } from "@/contexts/InsuranceContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { validateFile, uploadFileToStorage } from "./uploadUtils";
-import { supabase } from "@/integrations/supabase/client";
+import { validateFile, uploadFileToStorage, storeDocumentMetadata } from "./uploadUtils";
 
 export const useDocumentUpload = (onSuccess?: () => void) => {
   const { user } = useAuth();
@@ -127,10 +126,7 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
       
       setProgress(90);
       
-      // Use the Supabase client directly to store document metadata
-      console.log("Uploading document metadata with file URL:", fileUrl);
-      
-      // FIX: Use the type to derive the document name instead of trying to access a non-existent name property
+      // Create document metadata
       const documentData = {
         owner_id: user.id,
         name: `${docInfo.type} Insurance`,  // Create a name based on the type
@@ -146,15 +142,11 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
         shared: false
       };
       
-      const { data, error: insertError } = await supabase
-        .from('documents')
-        .insert(documentData)
-        .select()
-        .single();
+      // Store document metadata
+      const { success, error: metadataError } = await storeDocumentMetadata(documentData);
       
-      if (insertError) {
-        console.error("Error inserting document metadata:", insertError);
-        throw new Error("Failed to record document metadata");
+      if (!success) {
+        throw new Error(metadataError || "Failed to record document metadata");
       }
       
       setProgress(100);
@@ -178,9 +170,7 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
         variant: "destructive"
       });
     } finally {
-      if (uploadError) {
-        setIsUploading(false);
-      }
+      setIsUploading(false);
     }
   };
   

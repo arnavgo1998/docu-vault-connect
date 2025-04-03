@@ -75,7 +75,7 @@ export const uploadFileToStorage = async (file: File, userId: string) => {
       return { fileUrl: null, error: error.message };
     }
     
-    // Get the public URL - FIX: Use getPublicUrl method instead of accessing storageUrl directly
+    // Get the public URL - Use getPublicUrl method instead of accessing storageUrl directly
     const { data: publicUrlData } = supabase.storage
       .from('documents')
       .getPublicUrl(filePath);
@@ -87,6 +87,40 @@ export const uploadFileToStorage = async (file: File, userId: string) => {
     return { 
       fileUrl: null, 
       error: error instanceof Error ? error.message : "Unknown error during file upload" 
+    };
+  }
+};
+
+// Add a function to store document metadata in Supabase
+export const storeDocumentMetadata = async (documentData: any) => {
+  try {
+    console.log("Attempting to store document metadata with data:", documentData);
+    
+    // Make sure we have the required fields
+    if (!documentData.owner_id || !documentData.name || !documentData.type) {
+      console.error("Missing required fields for document metadata");
+      return { success: false, error: "Missing required fields" };
+    }
+    
+    // Insert the document metadata
+    const { data, error } = await supabase
+      .from('documents')
+      .insert(documentData)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Error storing document metadata:", error);
+      return { success: false, error: error.message };
+    }
+    
+    console.log("Document metadata stored successfully:", data);
+    return { success: true, data, error: null };
+  } catch (error) {
+    console.error("Exception storing document metadata:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Unknown error storing document metadata" 
     };
   }
 };
