@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,45 +41,21 @@ export const uploadFileToStorage = async (file: File, userId: string): Promise<{
     console.log("Uploading with userID:", userId);
     console.log("File path:", fileName);
     
-    // Check if user is authenticated in Supabase
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      console.error("No active Supabase session found");
+    // Check if storage bucket exists, create it if it doesn't
+    const { data: buckets } = await supabase.storage.listBuckets();
+    if (!buckets?.some(bucket => bucket.name === 'documents')) {
+      console.log("Documents bucket not found, creating one...");
+      const { error: bucketError } = await supabase.storage.createBucket('documents', {
+        public: true
+      });
       
-      // Try to get user from local storage as fallback for development
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        // If still no user, we need to upload the file with the public key only
-        // and rely on our RLS policies to allow the upload
-        console.warn("Using development auth approach. In production, users must be authenticated with Supabase Auth.");
-        
-        // For development, upload without custom headers, we'll rely on RLS policies
-        const { data: fileData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-          
-        if (uploadError) {
-          console.error("Storage upload error:", uploadError);
-          throw new Error(`Storage error: ${uploadError.message}`);
-        }
-        
-        // Get public URL
-        const { data: publicUrlData } = supabase.storage
-          .from('documents')
-          .getPublicUrl(fileName);
-          
-        if (!publicUrlData || !publicUrlData.publicUrl) {
-          throw new Error("Failed to get public URL for uploaded file");
-        }
-        
-        return { fileUrl: publicUrlData.publicUrl };
+      if (bucketError) {
+        console.error("Error creating bucket:", bucketError);
+        // Continue anyway as the bucket might exist but not be visible to the current user
       }
     }
     
-    // Standard upload with proper auth
+    // Standard upload with auth from Supabase context
     const { data: fileData, error: uploadError } = await supabase.storage
       .from('documents')
       .upload(fileName, file, {

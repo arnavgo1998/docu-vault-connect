@@ -75,6 +75,7 @@ export const useDocumentUpload = (onSuccess?: () => void) => {
       setProgress(90);
       
       // Use the uploadDocument function to store document metadata
+      console.log("Uploading document metadata with file URL:", fileUrl);
       const success = await uploadDocument(file, {
         fileUrl: fileUrl,
         ...docInfo
