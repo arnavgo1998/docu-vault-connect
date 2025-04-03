@@ -6,7 +6,7 @@ import { Loader2, Upload } from "lucide-react";
 import { useInsurance } from "../../contexts/InsuranceContext";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UploadDocumentProps {
@@ -16,6 +16,7 @@ interface UploadDocumentProps {
 const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
   const { uploadDocument, extractDocumentInfo } = useInsurance();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -67,7 +68,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       
       // Use the uploadDocument function to store document metadata
       const success = await uploadDocument(file, {
-        file_url: fileUrl,
+        file_url: fileUrl, // Match this with what's in document.ts
         ...docInfo
       });
       

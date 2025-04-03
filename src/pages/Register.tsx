@@ -6,6 +6,7 @@ import Layout from "../components/layout/Layout";
 import AuthHeader from "../components/auth/AuthHeader";
 import RegistrationDetailsForm from "../components/auth/RegistrationDetailsForm";
 import OtpVerificationForm from "../components/auth/OtpVerificationForm";
+import { useToast } from "@/hooks/use-toast";
 
 const Register: React.FC = () => {
   const [step, setStep] = useState<"details" | "verify">("details");
@@ -18,6 +19,7 @@ const Register: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -54,7 +56,11 @@ const Register: React.FC = () => {
       }
     } catch (error) {
       console.error("Registration error:", error);
-      toast.error("Registration failed. Please try again.");
+      toast({
+        title: "Registration failed",
+        description: "Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -72,7 +78,11 @@ const Register: React.FC = () => {
       }
     } catch (error) {
       console.error("Verification error:", error);
-      toast.error("Verification failed. Please try again.");
+      toast({
+        title: "Verification failed",
+        description: "Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
