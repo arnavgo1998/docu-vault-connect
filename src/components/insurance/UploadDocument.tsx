@@ -46,10 +46,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         .from('documents')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false,
-          onUploadProgress: (progress) => {
-            setProgress(10 + Math.round((progress.loaded / progress.total) * 60));
-          },
+          upsert: false
         });
       
       if (uploadError) {
@@ -65,7 +62,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         .getPublicUrl(filePath);
       
       // Save document metadata to the database
-      const { data: documentData, error: documentError } = await supabase
+      const { data, error: documentError } = await supabase
         .from('documents')
         .insert({
           user_id: user.id,
@@ -74,9 +71,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
           file_path: filePath,
           file_type: file.type,
           file_size: file.size
-        })
-        .select()
-        .single();
+        });
       
       if (documentError) {
         throw documentError;
@@ -86,10 +81,10 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       
       // Call the existing uploadDocument function for any app-specific logic
       const success = await uploadDocument(file, {
-        id: documentData.id,
+        id: data?.[0]?.id || uuidv4(),
         fileUrl: publicUrl,
-        fileType: file.type,
-        fileSize: file.size
+        fileSize: file.size,
+        type: "General"
       });
       
       if (success) {
