@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/layout/Layout";
 import { FileText, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const Register: React.FC = () => {
   const [step, setStep] = useState<"details" | "verify">("details");
@@ -36,7 +36,6 @@ const Register: React.FC = () => {
     
     setIsSubmitting(true);
     
-    // Store the user data in localStorage to be used after OTP verification
     const userData = {
       id: `user_${Date.now()}`,
       name: formData.name,
@@ -47,7 +46,6 @@ const Register: React.FC = () => {
     
     localStorage.setItem("docuvault_pending_user", JSON.stringify(userData));
     
-    // Send OTP
     const success = await sendOtp(formData.phone);
     setIsSubmitting(false);
     
@@ -66,13 +64,11 @@ const Register: React.FC = () => {
     
     setIsSubmitting(true);
     
-    // Verify OTP
     const isVerified = await verifyOtp(formData.phone, otp);
     
     setIsSubmitting(false);
     
     if (isVerified) {
-      // Registration is handled in verifyOtp, navigate to home
       navigate("/");
     }
   };
