@@ -68,7 +68,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       
       // Use the uploadDocument function to store document metadata
       const success = await uploadDocument(file, {
-        file_url: fileUrl, // Match this with what's in document.ts
+        fileUrl: fileUrl, // Changed from file_url to fileUrl to match InsuranceDocument type
         ...docInfo
       });
       

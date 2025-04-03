@@ -1,8 +1,10 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "./AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
+import { Document } from "@/types/document";
 
 // Define types
 export type InsuranceType = "Health" | "Auto" | "Life" | "Home" | "General" | "Other";
@@ -60,6 +62,7 @@ const InsuranceContext = createContext<InsuranceContextType | undefined>(undefin
 // Provider component
 export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [myDocuments, setMyDocuments] = useState<InsuranceDocument[]>([]);
   const [sharedWithMe, setSharedWithMe] = useState<InsuranceDocument[]>([]);
   const [usersWithAccess, setUsersWithAccess] = useState<SharedAccess[]>([]);
@@ -89,23 +92,100 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
     
     try {
-      // In a real implementation, we would load data from Supabase tables
-      // For this demo, we'll simulate with mock data
+      // Load user's documents
+      const { data: documents, error: documentsError } = await supabase
+        .from('documents')
+        .select('*, profiles!documents_owner_id_fkey(name)')
+        .eq('owner_id', user.id);
       
-      // Mock data loading from Supabase with delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (documentsError) throw documentsError;
+
+      // Load documents shared with user
+      const { data: sharedDocs, error: sharedError } = await supabase
+        .from('shared_documents')
+        .select(`
+          documents(*, profiles!documents_owner_id_fkey(name)),
+          shared_at
+        `)
+        .eq('shared_with_id', user.id);
       
-      // Set mock data for documents, shared documents, and access
-      setMyDocuments([]);
-      setSharedWithMe([]);
-      setUsersWithAccess([]);
+      if (sharedError) throw sharedError;
+
+      // Load users who have access to my documents
+      const { data: accessData, error: accessError } = await supabase
+        .from('shared_documents')
+        .select(`
+          document_id,
+          shared_with_id,
+          profiles!shared_documents_shared_with_id_fkey(name),
+          shared_at
+        `)
+        .eq('shared_by_id', user.id);
       
-      // Generate mock invite code
-      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-      setMyInviteCode(code);
+      if (accessError) throw accessError;
+      
+      // Transform documents data to match InsuranceDocument type
+      const transformedDocs = documents.map((doc: any): InsuranceDocument => ({
+        id: doc.id,
+        ownerId: doc.owner_id,
+        ownerName: doc.profiles.name,
+        name: doc.name,
+        type: doc.type as InsuranceType,
+        policyNumber: doc.policy_number || '',
+        provider: doc.provider,
+        premium: doc.premium_amount || '',
+        dueDate: doc.end_date || '',
+        uploadDate: doc.upload_date || new Date().toISOString(),
+        fileUrl: doc.file_url || '',
+        shared: doc.shared || false,
+        fileType: doc.file_type,
+        fileSize: doc.file_size
+      }));
+      
+      // Transform shared documents
+      const transformedShared = sharedDocs.map((shared: any): InsuranceDocument => {
+        const doc = shared.documents;
+        return {
+          id: doc.id,
+          ownerId: doc.owner_id,
+          ownerName: doc.profiles.name,
+          name: doc.name,
+          type: doc.type as InsuranceType,
+          policyNumber: doc.policy_number || '',
+          provider: doc.provider,
+          premium: doc.premium_amount || '',
+          dueDate: doc.end_date || '',
+          uploadDate: doc.upload_date || new Date().toISOString(),
+          fileUrl: doc.file_url || '',
+          shared: true,
+          fileType: doc.file_type,
+          fileSize: doc.file_size
+        };
+      });
+      
+      // Transform access data
+      const transformedAccess = accessData.map((access: any): SharedAccess => ({
+        documentId: access.document_id,
+        userId: access.shared_with_id,
+        userName: access.profiles.name,
+        accessGrantedDate: access.shared_at
+      }));
+      
+      setMyDocuments(transformedDocs);
+      setSharedWithMe(transformedShared);
+      setUsersWithAccess(transformedAccess);
+      
+      // Generate invite code if none exists
+      if (!myInviteCode) {
+        generateInviteCode();
+      }
     } catch (error) {
       console.error("Failed to load user data:", error);
-      toast.error("Failed to load user data");
+      toast({
+        title: "Failed to load data",
+        description: "There was an error loading your documents.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -123,38 +203,55 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setIsLoading(true);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Find the target user with the invite code
+      // In a real implementation, we would have a table of invite codes
+      // For now, we'll use a simplified approach
       
-      // Check if the invite code is valid
-      if (inviteCode !== myInviteCode) {
-        toast.error("Invalid invite code");
+      // Check if the invite code is valid (this would be a DB lookup in a real app)
+      if (!inviteCode) {
+        toast({
+          title: "Invalid invite code",
+          description: "The provided invite code is not valid.",
+          variant: "destructive"
+        });
         return false;
       }
       
-      // Grant access
-      const newAccess: SharedAccess = {
-        documentId,
-        userId: user?.id || "",
-        userName: user?.name || "",
-        accessGrantedDate: new Date().toISOString(),
-      };
+      // Share the document
+      const { data, error } = await supabase
+        .from('shared_documents')
+        .insert({
+          document_id: documentId,
+          shared_with_id: user?.id || '',
+          shared_by_id: user?.id || '' // This should be the owner of the invite code in a real app
+        });
+        
+      if (error) throw error;
       
-      // Update state
-      const updatedAccess = [...usersWithAccess, newAccess];
-      setUsersWithAccess(updatedAccess);
+      // Update the document to mark it as shared
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ shared: true })
+        .eq('id', documentId);
+        
+      if (updateError) throw updateError;
       
-      // Mark document as shared
-      const updatedDocs = myDocuments.map(doc => 
-        doc.id === documentId ? { ...doc, shared: true } : doc
-      );
-      setMyDocuments(updatedDocs);
+      // Refresh the data
+      await loadUserData();
       
-      toast.success("Document shared successfully");
+      toast({
+        title: "Document shared successfully",
+        description: "Access has been granted to the document."
+      });
+      
       return true;
     } catch (error) {
       console.error("Failed to share document:", error);
-      toast.error("Failed to share document");
+      toast({
+        title: "Failed to share document",
+        description: "There was an error sharing the document.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -166,28 +263,51 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setIsLoading(true);
       
-      // Remove access
-      const updatedAccess = usersWithAccess.filter(
-        access => !(access.userId === userId && access.documentId === documentId)
-      );
+      // Remove the shared_documents entry
+      const { error } = await supabase
+        .from('shared_documents')
+        .delete()
+        .match({ 
+          shared_with_id: userId,
+          document_id: documentId
+        });
+        
+      if (error) throw error;
       
-      // Update state
-      setUsersWithAccess(updatedAccess);
+      // Check if anyone else has access to this document
+      const { data: remainingShares, error: countError } = await supabase
+        .from('shared_documents')
+        .select('id')
+        .eq('document_id', documentId);
+        
+      if (countError) throw countError;
       
       // If no one has access to this document anymore, mark it as not shared
-      const isStillShared = updatedAccess.some(access => access.documentId === documentId);
-      if (!isStillShared) {
-        const updatedDocs = myDocuments.map(doc => 
-          doc.id === documentId ? { ...doc, shared: false } : doc
-        );
-        setMyDocuments(updatedDocs);
+      if (remainingShares.length === 0) {
+        const { error: updateError } = await supabase
+          .from('documents')
+          .update({ shared: false })
+          .eq('id', documentId);
+          
+        if (updateError) throw updateError;
       }
       
-      toast.success("Access revoked successfully");
+      // Refresh the data
+      await loadUserData();
+      
+      toast({
+        title: "Access revoked successfully",
+        description: "Access to the document has been removed."
+      });
+      
       return true;
     } catch (error) {
       console.error("Failed to revoke access:", error);
-      toast.error("Failed to revoke access");
+      toast({
+        title: "Failed to revoke access",
+        description: "There was an error revoking access.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -198,7 +318,11 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const uploadDocument = async (file: File, details?: Partial<InsuranceDocument>): Promise<boolean> => {
     try {
       if (!user) {
-        toast.error("You must be logged in to upload documents");
+        toast({
+          title: "Authentication required",
+          description: "You must be logged in to upload documents.",
+          variant: "destructive"
+        });
         return false;
       }
       
@@ -209,34 +333,44 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!details || Object.keys(details).length === 0) {
         docInfo = await extractDocumentInfo(file);
       }
+
+      // Create document record in Supabase
+      const { data, error } = await supabase
+        .from('documents')
+        .insert({
+          owner_id: user.id,
+          name: docInfo.name || `${docInfo.type || 'General'} Insurance`,
+          type: docInfo.type || "General",
+          provider: docInfo.provider || "Unknown Provider",
+          policy_number: docInfo.policyNumber,
+          premium_amount: docInfo.premium,
+          file_url: docInfo.fileUrl,
+          file_type: file.type,
+          file_size: file.size,
+          upload_date: new Date().toISOString(),
+          shared: false
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
       
-      // Create a new document
-      const newDoc: InsuranceDocument = {
-        id: uuidv4(),
-        ownerId: user.id,
-        ownerName: user.name,
-        name: `${docInfo.type || 'General'} Insurance`,
-        type: (docInfo.type as InsuranceType) || "General",
-        policyNumber: docInfo.policyNumber || `P-${Math.random().toString().substring(2, 10)}`,
-        provider: docInfo.provider || "Unknown Provider",
-        premium: docInfo.premium || "Unknown",
-        dueDate: docInfo.dueDate || new Date().toISOString().split('T')[0],
-        uploadDate: new Date().toISOString(),
-        fileUrl: URL.createObjectURL(file), // In a real app, this would be a server URL
-        shared: false,
-        fileType: file.type,
-        fileSize: file.size
-      };
+      // Refresh the user data
+      await loadUserData();
       
-      // Update state
-      const updatedDocs = [...myDocuments, newDoc];
-      setMyDocuments(updatedDocs);
+      toast({
+        title: "Document uploaded successfully",
+        description: "Your document has been uploaded."
+      });
       
-      toast.success("Document uploaded successfully");
       return true;
     } catch (error) {
       console.error("Failed to upload document:", error);
-      toast.error("Failed to upload document");
+      toast({
+        title: "Failed to upload document",
+        description: "There was an error uploading your document.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -298,19 +432,59 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setIsLoading(true);
       
-      // Update document
-      const updatedDocs = myDocuments.map(doc => 
-        doc.id === id ? { ...doc, ...updates } : doc
-      );
+      // Map our frontend model to the database model
+      const dbUpdates: any = {
+        name: updates.name,
+        type: updates.type,
+        provider: updates.provider,
+        policy_number: updates.policyNumber,
+        premium_amount: updates.premium,
+        end_date: updates.dueDate
+      };
       
-      // Update state
-      setMyDocuments(updatedDocs);
+      // Only include keys with values
+      Object.keys(dbUpdates).forEach(key => {
+        if (dbUpdates[key] === undefined) {
+          delete dbUpdates[key];
+        }
+      });
       
-      toast.success("Document updated successfully");
+      // Update the document in Supabase
+      const { error } = await supabase
+        .from('documents')
+        .update(dbUpdates)
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Record the edit in document_edits
+      const { error: editError } = await supabase
+        .from('document_edits')
+        .insert({
+          document_id: id,
+          editor_id: user?.id,
+          edit_type: 'update',
+          new_value: dbUpdates
+        });
+        
+      if (editError) console.error("Failed to record edit:", editError);
+      
+      // Refresh the data
+      await loadUserData();
+      
+      toast({
+        title: "Document updated successfully",
+        description: "Your document has been updated."
+      });
+      
       return true;
     } catch (error) {
       console.error("Failed to update document:", error);
-      toast.error("Failed to update document");
+      toast({
+        title: "Failed to update document",
+        description: "There was an error updating your document.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -322,21 +496,54 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setIsLoading(true);
       
-      // Delete document
-      const updatedDocs = myDocuments.filter(doc => doc.id !== id);
+      // Find the document to get the file URL
+      const { data: doc, error: fetchError } = await supabase
+        .from('documents')
+        .select('file_url')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError) throw fetchError;
       
-      // Also remove any access grants for this document
-      const updatedAccess = usersWithAccess.filter(access => access.documentId !== id);
+      // Delete the document from Supabase
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
       
-      // Update state
-      setMyDocuments(updatedDocs);
-      setUsersWithAccess(updatedAccess);
+      // If the document has a file in storage, delete it
+      if (doc && doc.file_url) {
+        // Extract the path from the URL
+        const url = new URL(doc.file_url);
+        const path = url.pathname.split('/').slice(2).join('/');
+        
+        if (path) {
+          const { error: storageError } = await supabase.storage
+            .from('documents')
+            .remove([path]);
+            
+          if (storageError) console.error("Failed to delete file from storage:", storageError);
+        }
+      }
       
-      toast.success("Document deleted successfully");
+      // Refresh the data
+      await loadUserData();
+      
+      toast({
+        title: "Document deleted successfully",
+        description: "Your document has been deleted."
+      });
+      
       return true;
     } catch (error) {
       console.error("Failed to delete document:", error);
-      toast.error("Failed to delete document");
+      toast({
+        title: "Failed to delete document",
+        description: "There was an error deleting your document.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
