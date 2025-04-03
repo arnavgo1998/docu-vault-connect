@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import AuthHeader from "../components/auth/AuthHeader";
 
 const Login: React.FC = () => {
   const { sendOtp, verifyOtp, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -30,7 +31,11 @@ const Login: React.FC = () => {
     e.preventDefault();
     
     if (!phone) {
-      toast.error("Please enter your phone number");
+      toast({
+        title: "Error",
+        description: "Please enter your phone number",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -40,7 +45,10 @@ const Login: React.FC = () => {
       const success = await sendOtp(phone);
       if (success) {
         setOtpSent(true);
-        toast.success("OTP has been sent to your phone. Use '123456' for testing.");
+        toast({
+          title: "Success",
+          description: "OTP has been sent to your phone. Use '123456' for testing."
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -51,7 +59,11 @@ const Login: React.FC = () => {
     e.preventDefault();
     
     if (!otp) {
-      toast.error("Please enter the OTP");
+      toast({
+        title: "Error",
+        description: "Please enter the OTP",
+        variant: "destructive"
+      });
       return;
     }
     

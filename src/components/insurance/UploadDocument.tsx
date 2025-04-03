@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +67,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
       
       // Use the uploadDocument function to store document metadata
       const success = await uploadDocument(file, {
-        fileUrl: fileUrl, // Changed from file_url to fileUrl to match InsuranceDocument type
+        fileUrl: fileUrl, // Use fileUrl instead of file_url to match InsuranceDocument type
         ...docInfo
       });
       
@@ -93,7 +92,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         variant: "destructive"
       });
     } finally {
-      setIsUploading(false);
+      setIsUploading(false);  // Fixed: Use isUploading instead of isSubmitting
     }
   };
   
