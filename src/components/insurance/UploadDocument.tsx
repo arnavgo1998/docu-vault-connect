@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         variant: "destructive"
       });
     } finally {
-      setIsUploading(false);  // Fixed: Use isUploading instead of isSubmitting
+      setIsUploading(false);
     }
   };
   
