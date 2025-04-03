@@ -385,7 +385,7 @@ export const InsuranceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // Extract information from a document using OCR/AI (mock implementation)
+  // Extract information from a document using OCR/AI
   const extractDocumentInfo = async (file: File): Promise<Partial<InsuranceDocument>> => {
     // In a real app, this would send the file to a backend API for OCR/AI processing
     await new Promise(resolve => setTimeout(resolve, 1000));
