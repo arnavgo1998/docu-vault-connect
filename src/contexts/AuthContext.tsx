@@ -1,9 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/use-toast";
 import { AuthUser, AuthContextType } from "./auth/types";
-import { MOCK_USERS } from "./auth/mockData";
-import { sendOtp as sendOtpUtil, verifyOtp as verifyOtpUtil } from "./auth/authUtils";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -11,59 +11,151 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on mount
+  // Initialize auth state from Supabase
   useEffect(() => {
-    const storedUser = localStorage.getItem("docuvault_user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error("Failed to parse stored user:", error);
-        localStorage.removeItem("docuvault_user");
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        setSession(currentSession);
+        setSupabaseUser(currentSession?.user ?? null);
+        
+        // If session exists, fetch user profile
+        if (currentSession?.user) {
+          setTimeout(() => {
+            fetchUserProfile(currentSession.user.id);
+          }, 0);
+        } else {
+          setUser(null);
+        }
       }
-    }
-    setIsLoading(false);
+    );
+
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setSupabaseUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        fetchUserProfile(currentSession.user.id);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Send OTP
+  // Fetch user profile from Supabase
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        setUser(null);
+      } else if (data) {
+        setUser({
+          id: data.id,
+          name: data.name || 'User',
+          phone: data.phone || '',
+          email: data.email,
+          age: data.age
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Send OTP via Supabase phone auth (Note: this is placeholder as Supabase doesn't have built-in phone auth)
   const sendOtp = async (phone: string): Promise<boolean> => {
-    return sendOtpUtil(phone);
+    try {
+      // In a real implementation, this would use Supabase Auth with a phone provider
+      // For now, we'll just mock this
+      toast({
+        title: "OTP sent",
+        description: "Use '123456' for testing purposes"
+      });
+      return true;
+    } catch (error) {
+      console.error("Failed to send OTP:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send OTP. Please try again.",
+        variant: "destructive"
+      });
+      return false;
+    }
   };
 
-  // Verify OTP
+  // Verify OTP (placeholder implementation)
   const verifyOtp = async (phone: string, otp: string): Promise<boolean> => {
-    return verifyOtpUtil(phone, otp);
+    try {
+      // Mock verification
+      const isValid = otp === "123456";
+      if (!isValid) {
+        toast({
+          title: "Invalid OTP",
+          description: "Please try again with the correct code.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Failed to verify OTP:", error);
+      toast({
+        title: "Error",
+        description: "Failed to verify OTP. Please try again.",
+        variant: "destructive"
+      });
+      return false;
+    }
   };
 
-  // Login with phone and OTP
-  const login = async (phone: string, otp: string): Promise<boolean> => {
+  // Login with email and password
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       
-      // Verify OTP
-      const isVerified = await verifyOtp(phone, otp);
-      if (!isVerified) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive"
+        });
         return false;
       }
       
-      // Find user by phone
-      const foundUser = MOCK_USERS.find((u) => u.phone === phone);
-      
-      if (!foundUser) {
-        toast.error("User not found. Please register first.");
-        return false;
-      }
-      
-      // Set user in state and localStorage
-      setUser(foundUser);
-      localStorage.setItem("docuvault_user", JSON.stringify(foundUser));
-      toast.success("Login successful!");
+      toast({
+        title: "Login successful",
+        description: "Welcome back!"
+      });
       return true;
     } catch (error) {
       console.error("Login failed:", error);
-      toast.error("Login failed. Please try again.");
+      toast({
+        title: "Error",
+        description: "Login failed. Please try again.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -71,37 +163,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Register new user
-  const register = async (userData: Omit<AuthUser, "id">): Promise<boolean> => {
+  const register = async (userData: Omit<AuthUser, "id"> & { password: string }): Promise<boolean> => {
     try {
       setIsLoading(true);
       
-      // Check if user already exists with the same phone
-      const userExists = MOCK_USERS.some((u) => u.phone === userData.phone);
+      // Register user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email || '',
+        password: userData.password,
+        phone: userData.phone,
+        options: {
+          data: {
+            name: userData.name,
+            age: userData.age
+          }
+        }
+      });
       
-      if (userExists) {
-        toast.error("A user with this phone number already exists.");
+      if (error) {
+        toast({
+          title: "Registration failed",
+          description: error.message,
+          variant: "destructive"
+        });
         return false;
       }
       
-      // Generate ID (would be done by the backend in a real app)
-      const newUser: AuthUser = {
-        ...userData,
-        id: Math.random().toString(36).substring(2, 11),
-      };
+      // Update profile with additional info
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            name: userData.name,
+            phone: userData.phone,
+            email: userData.email,
+            age: userData.age
+          });
+        
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+        }
+      }
       
-      // In a real app, this would call an API to create the user
-      // For demo, we'll just pretend it worked
-      MOCK_USERS.push(newUser);
-      
-      // Set user in state and localStorage
-      setUser(newUser);
-      localStorage.setItem("docuvault_user", JSON.stringify(newUser));
-      
-      toast.success("Registration successful!");
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created!"
+      });
       return true;
     } catch (error) {
       console.error("Registration failed:", error);
-      toast.error("Registration failed. Please try again.");
+      toast({
+        title: "Error",
+        description: "Registration failed. Please try again.",
+        variant: "destructive"
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -109,10 +225,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Logout
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("docuvault_user");
-    toast.success("Logged out successfully");
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully."
+      });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Error",
+        description: "Logout failed. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

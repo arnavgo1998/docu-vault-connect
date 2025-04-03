@@ -5,6 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Upload } from "lucide-react";
 import { useInsurance } from "../../contexts/InsuranceContext";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from 'uuid';
+import { toast } from "@/components/ui/use-toast";
 
 interface UploadDocumentProps {
   onSuccess?: () => void;
@@ -12,9 +16,9 @@ interface UploadDocumentProps {
 
 const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
   const { uploadDocument, extractDocumentInfo } = useInsurance();
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isFakeProgress, setIsFakeProgress] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processingInfo, setProcessingInfo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,45 +30,89 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
   };
   
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !user) return;
     
     setIsUploading(true);
-    setIsFakeProgress(true);
-    
-    // Simulate upload progress
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 300);
+    setProgress(10);
     
     try {
-      // After upload is done, start processing
-      setTimeout(() => {
-        setIsFakeProgress(false);
-        setProcessingInfo(true);
-      }, 3000);
+      // Create a unique file path
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
       
-      // Simulate processing delay
-      setTimeout(async () => {
-        // Get document info
-        const success = await uploadDocument(file);
+      // Upload file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          onUploadProgress: (progress) => {
+            setProgress(10 + Math.round((progress.loaded / progress.total) * 60));
+          },
+        });
+      
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      setProgress(70);
+      setProcessingInfo(true);
+      
+      // Get public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+      
+      // Save document metadata to the database
+      const { data: documentData, error: documentError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: user.id,
+          name: file.name.split('.')[0], // Remove file extension
+          description: '', // This can be updated later
+          file_path: filePath,
+          file_type: file.type,
+          file_size: file.size
+        })
+        .select()
+        .single();
+      
+      if (documentError) {
+        throw documentError;
+      }
+      
+      setProgress(90);
+      
+      // Call the existing uploadDocument function for any app-specific logic
+      const success = await uploadDocument(file, {
+        id: documentData.id,
+        fileUrl: publicUrl,
+        fileType: file.type,
+        fileSize: file.size
+      });
+      
+      if (success) {
+        setProgress(100);
+        toast({
+          title: "Upload successful",
+          description: "Your document has been uploaded."
+        });
         
-        if (success && onSuccess) {
-          setProgress(100);
+        if (onSuccess) {
           setTimeout(() => {
             onSuccess();
           }, 500);
         }
-      }, 5000);
+      }
     } catch (error) {
       console.error("Upload failed:", error);
-    } finally {
-      // This will happen too quickly, so we don't reset state here
+      toast({
+        title: "Upload failed",
+        description: "There was a problem uploading your document.",
+        variant: "destructive"
+      });
+      setIsUploading(false);
     }
   };
   
@@ -137,10 +185,10 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
         <div className="py-4">
           <div className="mb-4">
             <p className="font-medium text-center mb-2">
-              {isFakeProgress 
+              {progress < 70 
                 ? "Uploading document..." 
                 : processingInfo
-                  ? "Extracting document information..." 
+                  ? "Processing document..." 
                   : "Upload complete!"}
             </p>
             <Progress value={progress} className="h-2" />
@@ -151,7 +199,7 @@ const UploadDocument: React.FC<UploadDocumentProps> = ({ onSuccess }) => {
           </div>
           
           <div className="mt-4 text-center text-sm text-gray-500">
-            {isFakeProgress 
+            {progress < 70 
               ? "Please wait while we upload your document..."
               : processingInfo
                 ? "We're analyzing your document to extract policy information..."

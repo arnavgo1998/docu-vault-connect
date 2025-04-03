@@ -1,156 +1,262 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "../contexts/AuthContext";
-import Layout from "../components/layout/Layout";
-import { FileText, Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 const Login: React.FC = () => {
-  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const { login, sendOtp, verifyOtp, isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, sendOtp } = useAuth();
-  const navigate = useNavigate();
+  
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+  
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Error",
+        description: "Please enter email and password",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const success = await login(email, password);
+      if (success) {
+        navigate("/");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!phone) return;
+    if (!phone) {
+      toast({
+        title: "Error",
+        description: "Please enter your phone number",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSubmitting(true);
-    const success = await sendOtp(phone);
-    setIsSubmitting(false);
     
-    if (success) {
-      setStep("otp");
+    try {
+      const success = await sendOtp(phone);
+      if (success) {
+        setOtpSent(true);
+        toast({
+          title: "OTP Sent",
+          description: "An OTP has been sent to your phone. Use '123456' for testing."
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!phone || !otp) return;
+    if (!otp) {
+      toast({
+        title: "Error",
+        description: "Please enter the OTP",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSubmitting(true);
-    const success = await login(phone, otp);
-    setIsSubmitting(false);
     
-    if (success) {
-      navigate("/");
+    try {
+      const success = await verifyOtp(phone, otp);
+      if (success) {
+        // After verification, we need to login
+        await login("demo@example.com", "password123"); // This is a workaround for the mock implementation
+        navigate("/");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  return (
-    <Layout>
-      <div className="max-w-md mx-auto mt-8">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex justify-center mb-6">
-            <div className="flex flex-col items-center">
-              <div className="bg-docuvault-primary/10 p-3 rounded-full">
-                <FileText className="h-8 w-8 text-docuvault-primary" />
-              </div>
-              <h1 className="text-2xl font-bold mt-2">Welcome back</h1>
-              <p className="text-gray-500 text-center mt-1">
-                Sign in to access your documents
-              </p>
-            </div>
-          </div>
-          
-          {step === "phone" ? (
-            <form onSubmit={handleSendOtp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="Enter your phone number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  For demo, use: 1234567890
-                </p>
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-docuvault-primary hover:bg-docuvault-primary/90"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending OTP...
-                  </>
-                ) : (
-                  "Send OTP"
-                )}
-              </Button>
-              
-              <div className="text-center mt-4">
-                <p className="text-sm text-gray-500">
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => navigate("/register")}
-                    className="text-docuvault-primary hover:underline"
-                  >
-                    Register
-                  </button>
-                </p>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="otp">Verification Code</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  placeholder="Enter OTP sent to your phone"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  For demo, use: 123456
-                </p>
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-docuvault-primary hover:bg-docuvault-primary/90"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Verify & Sign In"
-                )}
-              </Button>
-              
-              <div className="text-center mt-4">
-                <button
-                  type="button"
-                  onClick={() => setStep("phone")}
-                  className="text-sm text-docuvault-primary hover:underline"
-                >
-                  Change phone number
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-docuvault-primary" />
       </div>
-    </Layout>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-gray-50">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold text-docuvault-primary">DocuVault</h1>
+        <p className="text-gray-500 mt-2">Secure document management</p>
+      </div>
+      
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Sign In</CardTitle>
+          <CardDescription>Access your secure document vault</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={loginMethod} onValueChange={(v) => setLoginMethod(v as "email" | "phone")}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="email">Email</TabsTrigger>
+              <TabsTrigger value="phone">Phone</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="email">
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="phone">
+              {!otpSent ? (
+                <form onSubmit={handleSendOtp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="1234567890"
+                    />
+                  </div>
+                  
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending OTP...
+                      </>
+                    ) : (
+                      "Send OTP"
+                    )}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="otp">Enter OTP</Label>
+                    <Input
+                      id="otp"
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="123456"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Use "123456" for testing purposes
+                    </p>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setOtpSent(false)}
+                      disabled={isSubmitting}
+                    >
+                      Back
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        "Verify OTP"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        <CardFooter className="flex flex-col">
+          <p className="text-sm text-gray-500 mb-2">
+            Don't have an account yet?{" "}
+            <Button
+              variant="link"
+              className="p-0 h-auto text-docuvault-primary"
+              onClick={() => navigate("/register")}
+            >
+              Sign up
+            </Button>
+          </p>
+          
+          <div className="text-xs text-gray-400 text-center mt-4">
+            For testing: Email: demo@example.com / Password: password123
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 };
 

@@ -9,25 +9,67 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_path: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          age: number | null
           created_at: string
           email: string | null
           id: string
+          name: string | null
           phone: string | null
           updated_at: string
         }
         Insert: {
+          age?: number | null
           created_at?: string
           email?: string | null
           id: string
+          name?: string | null
           phone?: string | null
           updated_at?: string
         }
         Update: {
+          age?: number | null
           created_at?: string
           email?: string | null
           id?: string
+          name?: string | null
           phone?: string | null
           updated_at?: string
         }
